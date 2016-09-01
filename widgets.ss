@@ -67,12 +67,6 @@
 		      (mi-element-content-size-set! (mi-el) extents))
 		    #f)))
 
-(define (box id text)
-  (create-element 'box id #f
-		  (lambda ()
-		    (define-values (x y w h) (values (mi-x) (mi-y) (mi-w) (mi-h)))
-		    (draw-rect x y w h))))
-
 (define (debug-tooltip)
   (define id (mi-hot-item))
   (when id
