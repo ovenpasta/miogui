@@ -19,7 +19,7 @@
 (define (get-last-coords id)
   (check-arg symbol? id get-last-coords)
 
-  (let ([e (hashtable-ref element-table id #f)])
+  (let ([e (mi-el-by-id id)])
     (if e 
 	(parameterize ([mi-el e])
 		      (values (mi-x) (mi-y) (mi-w) (mi-h)))

@@ -59,13 +59,25 @@
 	  (eq? (mi-active-item) id)))))
 
 (define (label id text)
+  (import (only (srfi s14 char-sets) char-set)
+	  (only (thunder-utils) string-split))
   (create-element 'label id #f
 		  (lambda ()
 		    (define-values (x y w h) (values (mi-x) (mi-y) (mi-w) (mi-h)))
 		    (draw-rect x y w h)
-		    (let ([extents (draw-text/centered text (+ 0 x (/ w 2)) (+ 0 y (/ h 2)))])
-		      (mi-element-content-size-set! (mi-el) extents))
+		    (let ([lines (string-split text (char-set #\newline))]
+			  [x* x] [y* y])
+		      (if (= 1 (length lines ))
+			  (let ([extents (draw-text/centered (car lines) (+ 0 x (/ w 2)) (+ 0 y (/ h 2)))])
+			    (set! x* (car extents)) 
+			    (set! y* (cadr extents)))
+			  (let loop ([l lines])
+			    (let ([extents (draw-text/centered text (+ 0 x* (/ w 2)) (+ y* ))])
+			      (set! x* (+ x* (car extents)))
+			      (set! y* (+ y* (cadr extents))))))
+		      (mi-element-content-size-set! (mi-el) (list x* y*)))
 		    #f)))
+
 
 (define (debug-tooltip)
   (define id (mi-hot-item))

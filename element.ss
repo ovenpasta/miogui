@@ -154,3 +154,5 @@
 (define (mi-padding) (mi-element-padding (mi-el)))
 (define mi-class (make-parameter #f))
 (define mi-style (make-parameter '()))
+
+(define (mi-el-by-id id) (hashtable-ref element-table id #f))

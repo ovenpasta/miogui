@@ -22,13 +22,14 @@
 			(font-family "Sans")
 			(font-size 12)]
 		     [button ==>
-		       (width 100) 
-		      (height 50) 
-		      (color red)
-		      (background-color (rgbf 0 1 0 0.5))
-		      (border-color red)
-		      (border-width 1) 
-		      (border-radius 7) ]
+			     (width 100) 
+			     (height 50) 
+			     (color red)
+			     (background-color (rgbf 0 1 0 0.5))
+			     (border-style solid)
+			     (border-color red)
+			     (border-width 1) 
+			     (border-radius 7) ]
 		     [(and button (: hover)) ==> (border-color green) (background-color blue)]
 		     [(and (: hover) (id button2)) ==> (background-color (rgbf 0.5 0.5 0.5)) (color blue)]
 		     [(and (: pressed) (id button2)) ==>
@@ -38,15 +39,16 @@
 		     [(id button1) ==>
 		      (font-weight bold)
 		      (padding 7)]
-		     [(id button2) ==> (left 200) (top 200) (width expand !important)
+		     [(id button2) ==> (left 200) (top 200) (width 50 !important)
 		      (background-color black)
-		      (transition-duration 0.2)]
+		      (transition-duration 1)]
 		     [(id panel-1) ==> 
 		      (width 100 %) (height 89 %) (top 0) (left 0) (position absolute) 
 		      (background-color (rgb 125 125 125))]
 		     [(> (id panel-1) button) ==> (width 27 %) (height 10 %)]
 		     [panel ==> 
-			    (padding 10) (width 100 %)]
+			    (padding 10) (width 100 %) (border-style solid)
+			    (border-width 1) (border-color black)]
 		     [label ==>
 			     (color black) (padding 5)
 			     (border-width 1) (border-color blue)]
@@ -61,7 +63,8 @@
 		     [(> (id tg1::panel) panel)
 			  ==> (width expand) (height expand) ]
 		     [(> (id panel3) label) ==> (width expand)]
-		     [slider-box ==> (background-color blue) (border-color red) ]
+		     [slider-box ==> (background-color blue) (border-style none)
+				 (border-radius 4)]
 		     [(id slider1) ==> (height 25) (width expand) (padding 5)] 
 		     [(id slider2) ==> (width 25) (height expand) (padding 2)]
 		     ))
@@ -74,10 +77,11 @@
   (define hash (make-eq-hashtable))
   (for-each
    (lambda (x)  
-     (hashtable-set! hash (car x) (if (and (list? x) (< (length x) 2)) 
+     (let ([v (if (and (list? x) (< (length x) 2)) 
 				      (cadr x) 
-				      (cadr x)))
-     (hashtable-ref hash (car x) #f))
+				      (cadr x))])
+       (hashtable-set! hash (car x) v)
+       v))
    alist)
   hash)
 
