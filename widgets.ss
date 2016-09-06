@@ -84,7 +84,8 @@
   (when id
 	(let-values ([(x y w h) (get-last-coords id)])
 	  (if (region-hit? x y w h)
-	      (parameterize ([mi-style `((position absolute) 
+	      (parameterize ([mi-style `((z-index 1)
+					 (position absolute) 
 					 (left ,(mi-mouse-x)) 
 					 (top ,(mi-mouse-y)) )])
 			    (label (symbol-append id "::debug") (symbol->string id)))))))

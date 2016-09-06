@@ -36,14 +36,16 @@
   (mi-hot-item #f))
 
 (define (render-finish)
-   (if (not (mi-mouse-down?))
+  (draw-all)
+
+  (if (not (mi-mouse-down?))
       (mi-active-item #f)
       (if (not (mi-active-item))
 	  (mi-active-item '())))
-   (sdl-unlock-texture (mi-sdl-texture))
-   (sdl-render-copy (mi-renderer) (mi-sdl-texture)
-		    (make-ftype-pointer sdl-rect-t 0) 
-		    (make-ftype-pointer sdl-rect-t 0))
+  (sdl-unlock-texture (mi-sdl-texture))
+  (sdl-render-copy (mi-renderer) (mi-sdl-texture)
+		   (make-ftype-pointer sdl-rect-t 0) 
+		   (make-ftype-pointer sdl-rect-t 0))
   
   (sdl-render-present (mi-renderer))
   (collect)

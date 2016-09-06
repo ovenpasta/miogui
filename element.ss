@@ -23,7 +23,8 @@
 	  (mutable transition-duration) 
 	  (mutable font-family) (mutable font-size) (mutable font-weight) (mutable font-style)
 	  (mutable padding) (mutable margin)
-	  (mutable content-size)))
+	  (mutable content-size)
+	  (mutable z-index)))
   
 (define element-table (make-eq-hashtable))
 
@@ -40,7 +41,7 @@
 	      [class class]
 	      [pseudo pseudo]
 	      [parent parent]
-	      [(x y w h margin padding) 0]
+	      [(x y w h margin padding z-index) 0]
 	      [else #f]))
 	  (vector->list (record-type-field-names (record-type-descriptor mi-element))))))
 
@@ -100,6 +101,7 @@
   (mi-element-border-width-set! element (style-query style 'border-width 1))
   (mi-element-border-radius-set! element (style-query style 'border-radius 0))
 
+
   (mi-element-color-set! element (->color (style-query style 'color 'white)))
   (mi-element-bg-color-set! element (->color (style-query style 'background-color 'white)))
 
@@ -118,6 +120,11 @@
     (mi-element-y-set! element y)
     (mi-element-w-set! element w)
     (mi-element-h-set! element h))
+
+  (let ([z-index (style-query style 'z-index 'auto)])
+    (if (eq? z-index 'auto)
+	(mi-element-z-index-set! element (mi-element-z-index (mi-element-parent element)))
+	z-index))
 
   ;(define border (style-query style 'border 'none))
   ;
@@ -149,10 +156,12 @@
 (define (mi-border-color) (mi-element-border-color (mi-el)))
 (define (mi-border-width) (mi-element-border-width (mi-el)))
 (define (mi-border-style) (mi-element-border-style (mi-el)))
+(define (mi-z-index) (mi-element-z-index (mi-el)))
 
 (define (mi-parent) (mi-element-parent (mi-el)))
 (define (mi-padding) (mi-element-padding (mi-el)))
 (define mi-class (make-parameter #f))
 (define mi-style (make-parameter '()))
+
 
 (define (mi-el-by-id id) (hashtable-ref element-table id #f))

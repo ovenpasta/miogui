@@ -20,7 +20,8 @@
 			(position static)
 			(box-sizing border-box)
 			(font-family "Sans")
-			(font-size 12)]
+			(font-size 12)
+			(z-index auto)]
 		     [button ==>
 			     (width 100) 
 			     (height 50) 
@@ -39,7 +40,7 @@
 		     [(id button1) ==>
 		      (font-weight bold)
 		      (padding 7)]
-		     [(id button2) ==> (left 200) (top 200) (width 50 !important)
+		     [(id button2) ==> (left 200) (top 200) (width 150 !important)
 		      (background-color black)
 		      (transition-duration 1)]
 		     [(id panel-1) ==> 
@@ -62,7 +63,7 @@
 		     [(> (id panel-1) slider) ==> (width expand) (margin 5)]
 		     [(> (id tg1::panel) panel)
 			  ==> (width expand) (height expand) ]
-		     [(> (id panel3) label) ==> (width expand)]
+		     [(> (id panel3) label) ==> (width expand) ]
 		     [slider-box ==> (background-color blue) (border-style none)
 				 (border-radius 4)]
 		     [(id slider1) ==> (height 25) (width expand) (padding 5)] 

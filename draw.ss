@@ -14,6 +14,8 @@
 ;; See the License for the specific language governing permissions and
 ;; limitations under the License.
 
+(define draw-pool '())
+
 (define (round-rect x y width height corner-radius)
   (let* ([cr (mi-cr)]
 	 [pi 3.1415926536]
@@ -28,46 +30,76 @@
     (cairo-arc cr (+ x radius) (+ y radius) radius (* 180 degrees) (* 270 degrees))
     (cairo-close-path cr)))
 
+(define (draw! thunk)
+  (define z-index (mi-z-index))
+  (let ([x (assq z-index draw-pool)])
+    (if x
+	(set-cdr! x (cons thunk (cdr x)))
+	(set! draw-pool (cons (cons z-index (list thunk)) 
+			      draw-pool)))))
+
+(define (draw-all)
+  (let ([z-ordered-draw (sort (lambda (x y) (< (car x) (car y))) draw-pool)])
+    (for-each (lambda (x) 
+		(for-each (lambda (y) (y))
+			    (reverse (cdr x))))
+		z-ordered-draw))
+ (set! draw-pool '()))
+
+ 
 (define (draw-rect x y w h)
   (define bw (mi-border-width))
   (define border-color (mi-border-color))
-  (define (draw-path)
-    (if (> (mi-border-radius) 0)
-	(round-rect (+ x bw) (+ y bw) (- w bw) (- h bw) (mi-border-radius))
-	(cairo-rectangle (mi-cr) (+ x bw) (+ y bw) (- w bw) (- h bw))))
+  (define border-radius (mi-border-radius))
+  (define bg-color (mi-bg-color))
+  (define border-style (mi-border-style))
 
-  (when (mi-bg-color)
-	(draw-path)
-	(with-cairo (mi-cr)
-	      ;(cairo-scale 640 480)
-	      (set-source-color (mi-bg-color))
-	      (fill)))
-  (when (not-none? (mi-border-style))
-	(draw-path)
-	(with-cairo (mi-cr)
-		    (set-line-width bw)
-		    (set-source-color border-color)
-		    (stroke))))
+  (define (draw-path)
+    (if (> border-radius 0)
+	(round-rect (+ x bw) (+ y bw) (- w bw) (- h bw) border-radius)
+	(cairo-rectangle (mi-cr) (+ x bw) (+ y bw) (- w bw) (- h bw))))
+  
+  (draw! 
+   (lambda ()
+     (when bg-color
+       (draw-path)
+       (with-cairo (mi-cr)
+		   (set-source-color bg-color)
+		   (fill)))
+     (when (not-none? border-style)
+       (draw-path)
+       (with-cairo (mi-cr)
+		   (set-line-width bw)
+		   (set-source-color border-color)
+		   (stroke))))))
 
 (define (draw-text/centered text x y)
+  (define font-size (mi-font-size))
+  (define font-family (mi-font-family))
+  (define font-style (mi-font-style))
+  (define font-weight (mi-font-weight))
+  (define color (mi-color))
+
   (check-arg string? text draw-text/centered)
   (check-arg number? x draw-text/centered)
   (check-arg number? y draw-text/centered)
-
-  (cairo-set-font-size (mi-cr) (mi-font-size))
-  (cairo-select-font-face  (mi-cr) (string-append (mi-font-family) (string #\nul))
-			   (cairo-font-slant (mi-font-style)) ;; normal|italic|oblique
-			   (cairo-font-weight (mi-font-weight))) ;; normal|bold
- 
   (let ([extents (cairo-text-extents-create)])
     (cairo-text-extents (mi-cr) text extents)
     (let-struct extents cairo-text-extents-t (width height x-bearing y-bearing)
-;		(printf "x ~d y ~d~n" x y)
-		(cairo-set-source-color (mi-cr) (mi-color))
-		(cairo-move-to (mi-cr) 
-			       (- x (/ width 2) x-bearing)
-			       (- y (/ height 2) y-bearing))
-		(cairo-show-text (mi-cr) text)
+		(draw!
+		 (lambda ()
+		   (cairo-set-font-size (mi-cr) font-size)
+		   (cairo-select-font-face  (mi-cr) (string-append font-family (string #\nul))
+					    (cairo-font-slant font-style) ;; normal|italic|oblique
+					    (cairo-font-weight font-weight)) ;; normal|bold
+		   
+		   
+					;		(printf "x ~d y ~d~n" x y)
+		   (cairo-set-source-color (mi-cr) color)
+		   (cairo-move-to (mi-cr) 
+				  (- x (/ width 2) x-bearing)
+				  (- y (/ height 2) y-bearing))
+		   (cairo-show-text (mi-cr) text)))
 		(list width height))))
 
 (define (draw-box id class style)
