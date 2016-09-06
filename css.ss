@@ -21,6 +21,7 @@
 			(box-sizing border-box)
 			(font-family "Sans")
 			(font-size 12)
+			(line-height 1.2)
 			(z-index auto)]
 		     [button ==>
 			     (width 100) 

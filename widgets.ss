@@ -66,18 +66,20 @@
 		    (define-values (x y w h) (values (mi-x) (mi-y) (mi-w) (mi-h)))
 		    (draw-rect x y w h)
 		    (let ([lines (string-split text (char-set #\newline))]
-			  [x* x] [y* y])
-		      (if (= 1 (length lines ))
-			  (let ([extents (draw-text/centered (car lines) (+ 0 x (/ w 2)) (+ 0 y (/ h 2)))])
-			    (set! x* (car extents)) 
-			    (set! y* (cadr extents)))
+			  [x* x] [y* y] [w* 0] [h* 0])
+		      (if (= 1 (length lines))
+			  (let ([extents (draw-text/centered (car lines) 
+							     (+ x (/ w 2)) (+ y (/ h 2)))])
+			    (set! w* (car extents)) 
+			    (set! h* (cadr extents)))
 			  (let loop ([l lines])
-			    (let ([extents (draw-text/centered text (+ 0 x* (/ w 2)) (+ y* ))])
-			      (set! x* (+ x* (car extents)))
-			      (set! y* (+ y* (cadr extents))))))
-		      (mi-element-content-size-set! (mi-el) (list x* y*)))
+			    (unless (null? l)
+			      (let ([extents (draw-text/centered (car l) (+ x* (/ w 2)) (+ y h*))])
+			      (set! h* (+ h* (* (mi-line-height) (cadr extents))))
+			      (set! w* (max w* (car extents)))
+			      (loop (cdr l))))))
+		      (mi-element-content-size-set! (mi-el) (list w* h*)))
 		    #f)))
-
 
 (define (debug-tooltip)
   (define id (mi-hot-item))
@@ -89,7 +91,6 @@
 					 (left ,(mi-mouse-x)) 
 					 (top ,(mi-mouse-y)) )])
 			    (label (symbol-append id "::debug") (symbol->string id)))))))
-
 
 (define (hslider id state)
   (create-element 'hslider id #t

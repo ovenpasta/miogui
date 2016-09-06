@@ -22,6 +22,7 @@
 	  (mutable border-width) (mutable border-color) (mutable border-style) (mutable border-radius)  
 	  (mutable transition-duration) 
 	  (mutable font-family) (mutable font-size) (mutable font-weight) (mutable font-style)
+	  (mutable line-height)
 	  (mutable padding) (mutable margin)
 	  (mutable content-size)
 	  (mutable z-index)))
@@ -109,6 +110,7 @@
   (mi-element-font-size-set! element (style-query style 'font-size 12))
   (mi-element-font-weight-set! element (style-query style 'font-weight 'normal))
   (mi-element-font-style-set! element (style-query style 'font-style 'normal))
+  (mi-element-line-height-set! element (style-query style 'line-height 1.2))
 
   (mi-element-x-set! element (style-query style 'left 0))
   (mi-element-y-set! element (style-query style 'top 0))
@@ -157,6 +159,7 @@
 (define (mi-border-width) (mi-element-border-width (mi-el)))
 (define (mi-border-style) (mi-element-border-style (mi-el)))
 (define (mi-z-index) (mi-element-z-index (mi-el)))
+(define (mi-line-height) (mi-element-line-height (mi-el)))
 
 (define (mi-parent) (mi-element-parent (mi-el)))
 (define (mi-padding) (mi-element-padding (mi-el)))

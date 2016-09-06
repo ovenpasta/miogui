@@ -89,7 +89,7 @@
 			 (lambda ()
 			   (vslider 'slider2 slider-state)
 			   (panel 'panel3 (lambda ()
-					    (label 'lbl3 "123455")
+					    (label 'lbl3 "123455\n54321")
 					    (mi-force-break 'panel3)
 					    (label 'lbl4 "67890")))))
 	   
