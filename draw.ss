@@ -84,6 +84,10 @@
   (check-arg number? x draw-text/centered)
   (check-arg number? y draw-text/centered)
   (let ([extents (cairo-text-extents-create)])
+    (cairo-set-font-size (mi-cr) font-size)
+    (cairo-select-font-face  (mi-cr) (string-append font-family (string #\nul))
+					    (cairo-font-slant font-style) ;; normal|italic|oblique
+					    (cairo-font-weight font-weight)) ;; normal|bold
     (cairo-text-extents (mi-cr) text extents)
     (let-struct extents cairo-text-extents-t (width height x-bearing y-bearing)
 		(draw!
@@ -93,11 +97,10 @@
 					    (cairo-font-slant font-style) ;; normal|italic|oblique
 					    (cairo-font-weight font-weight)) ;; normal|bold
 		   
-		   
 					;		(printf "x ~d y ~d~n" x y)
 		   (cairo-set-source-color (mi-cr) color)
 		   (cairo-move-to (mi-cr) 
-				  (- x (/ width 2) x-bearing)
+				  (- x (/ width 2) x-bearing )
 				  (- y (/ height 2) y-bearing))
 		   (cairo-show-text (mi-cr) text)))
 		(list width height))))
