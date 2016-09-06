@@ -32,7 +32,7 @@
 	 (mi-element-y-set! el 0)
 	 (mi-element-position-set! el 'absolute))
 
-       (guard (x [else (printf "ERROR IN RENDER ") (print-condition x) #;(sleep-s 1) #f])
+       (guard (x [else (printf "ERROR IN RENDER ") (display-condition x)(newline) #;(sleep-s 1) #f])
 	      (render-stuff))
        
        (let poll-event-loop ()

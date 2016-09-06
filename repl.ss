@@ -32,9 +32,12 @@
 			    (lambda (p)
 			      (parameterize 
 			       ([current-output-port p])
-				 (guard (e [else (print-condition e) ])
-					(let* ([token (read)]
-					       [x (eval token (interaction-environment))])
-					  (pretty-print x))))))])
-			  (nn-send my-local-repl-sock (string->utf8 pr) 0)))))))))
+				 (guard (e [else (display-condition e)(newline) ])
+				   (let loop () 
+				       (let ([token (read)])
+					 (unless (eof-object? token)
+					   (let ([x (eval token (interaction-environment))])
+					     (pretty-print x)(newline)
+					     (loop)))))))))])
+		       (nn-send my-local-repl-sock (string->utf8 pr) 0)))))))))
 
