@@ -76,7 +76,7 @@
 			     (list (+ x p-x p-padding margin) 
 				   (+ y s-y s-h) 
 				   (+ w*  2 margin)
-				   (max (+ h* (* 2 margin)) s-h))
+				   (+ h* (* 2 margin)))
 			     (list (+ x p-x p-padding margin) 
 				   (+ y margin s-y s-h)
 				   w* 
