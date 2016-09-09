@@ -15,27 +15,13 @@
 ;; limitations under the License.
 
 (define-record-type (mi-element make-mi-element% mi-element?)
-  (fields el id class parent (mutable children)
-	  (mutable style) (mutable pseudo)
-	  (mutable layout-state) (mutable position) (mutable x) (mutable y) (mutable w) (mutable h) 
-	  (mutable color) (mutable bg-color)
-	  (mutable border-width) (mutable border-color) (mutable border-style) (mutable border-radius)  
-	  (mutable transition-duration) 
-	  (mutable font-family) (mutable font-size) (mutable font-weight) (mutable font-style)
-	  (mutable line-height)
-	  (mutable padding) (mutable margin)
-	  (mutable content-size)
-	  (mutable z-index)
-	  (mutable display)
-	  (mutable justify-content)
-	  (mutable flex-direction)
-	  (mutable flex)
-	  (mutable direction)
-	  (mutable align-items) (mutable align-self)
-	  (mutable min-width) (mutable min-height)
-	  (mutable text-align)
-	  (mutable box-sizing)
-	  (mutable order)))
+  (fields el id class parent 
+	  (mutable children)
+	  (mutable style) 
+	  (mutable pseudo)
+	  (mutable layout-state) 
+	  (mutable x) (mutable y) (mutable w) (mutable h) 
+	  (mutable content-size)))
   
 (define element-table (make-eq-hashtable))
 
@@ -54,7 +40,8 @@
 	      [pseudo pseudo]
 	      [parent parent]
 	      [children '()]
-	      [(x y w h margin padding z-index) 0]
+	      [style (make-eq-hashtable)]
+	      [(x y w h) 0]
 	      [else #f]))
 	  (vector->list (record-type-field-names (record-type-descriptor mi-element))))))
 
@@ -69,12 +56,28 @@
   (let ([r (hashtable-ref style attr default)])
     (value-or-list r)))
 
+(define (mi-style-query element attr default inherited)
+  (let* ([r (hashtable-ref (mi-element-style element) attr #f)]
+	 [v (if r (value-or-list r)
+		(if inherited 'inherit default))])
+    (case v
+      [inherit 
+       (cond [(mi-element-parent element)
+	      => (lambda (parent)
+		   (mi-style-query (mi-element-parent element) attr default inherited))]
+	     [else default])]
+      [initial default]
+      [else v])))
+
 (define (create-element el id activable thunk)
   (unless id
     (set! id (mi-id id)))
   (let-values ([(last-x last-y last-w last-h) (get-last-coords id)])
     (let ([old-style (widget-old-style id)]
-	  [element #f] [td #f] [style #f] [pseudo #f])
+	  [element #f] 
+	  [td #f] 
+	  [style #f] 
+	  [pseudo #f])
       (when (and (number? last-w) (number? last-h) (region-hit? last-x last-y last-w last-h))
 	(mi-hot-item id)
 	(when (and activable (not (mi-active-item)) (mi-mouse-down?))
@@ -87,8 +90,9 @@
       
       (set! style (stylesheet-resolve element))
       (hashtable-set! style-table id style)
+      (mi-element-style-set! element style)
       
-      (set! td (style-query style 'transition-duration 0))
+      (set! td (mi-style-query element 'transition-duration 0 #f))
 
       (when (not (compare-hashes style old-style))
 	(let ([tr (hashtable-ref transitions id #f)])
@@ -102,76 +106,35 @@
 	  (set! style (style-transition (list-ref tr 1) (list-ref tr 2) 
 					(get-transition-ratio tr td)))))
       (eventually-end-transition element td)
+
       (mi-element-content-size-set! element (hashtable-ref content-size-table id #f))
       (mi-element-style-set! element style)
-      (mi-element-position-set! element (style-query style 'position 'static))
-      
-      (mi-element-padding-set! element (style-query style 'padding 0))
-      (mi-element-margin-set! element (style-query style 'margin 0))
 
-      (mi-element-border-color-set! element (->color (style-query style 'border-color 'black)))
-      (mi-element-border-style-set! element (style-query style 'border-style 'none))
-      (mi-element-border-width-set! element (style-query style 'border-width 1))
-      (mi-element-border-radius-set! element (style-query style 'border-radius 0))
+      (mi-element-x-set! element (mi-element-left element))
+      (mi-element-y-set! element (mi-element-top element))
+      (mi-element-w-set! element (mi-element-width element))
+      (mi-element-h-set! element (mi-element-height element))
+    
+      (case  (mi-element-display element)
+	[block
+	 (let-values ([(x y w h) (layout-element element)])
+	   (mi-element-x-set! element x)
+	   (mi-element-y-set! element y)
+	   (mi-element-w-set! element w)
+	   (mi-element-h-set! element h))]
+	[flex
+	 #t
+	 ]
+	[else (printf "create-element: error wrong value for display: ~d~n" display)])
 
-      (mi-element-color-set! element (->color (style-query style 'color 'white)))
-      (mi-element-bg-color-set! element (->color (style-query style 'background-color 'white)))
-
-      (mi-element-font-family-set! element (style-query style 'font-family "Sans"))
-      (mi-element-font-size-set! element (style-query style 'font-size 12))
-      (mi-element-font-weight-set! element (style-query style 'font-weight 'normal))
-      (mi-element-font-style-set! element (style-query style 'font-style 'normal))
-      (mi-element-line-height-set! element (style-query style 'line-height 1.2))
-
-      (mi-element-x-set! element (style-query style 'left 0))
-      (mi-element-y-set! element (style-query style 'top 0))
-      (mi-element-w-set! element (style-query style 'width 'none))
-      (mi-element-h-set! element (style-query style 'height 'none))
-
-      (mi-element-display-set! element (style-query style 'display 'block))
-
-      (mi-element-justify-content-set! element (style-query style 'justify-content 'flex-start))
-      (mi-element-align-items-set! element (style-query style 'align-items 'stretch))
-      (mi-element-align-self-set! element (style-query style 'align-self 'auto))
-      (mi-element-flex-direction-set! element (style-query style 'flex-direction 'row))
-      (mi-element-flex-set! element (style-query style 'flex '1))
-      (mi-element-min-width-set! element (style-query style 'min-width 0))
-      (mi-element-min-height-set! element (style-query style 'min-height 0))
-      (mi-element-text-align-set! element (style-query style 'text-align 'left))
-      (mi-element-direction-set! element (style-query style 'direction 'ltr))
-      (mi-element-box-sizing-set! element (style-query style 'box-sizing 'border-box))
-      (mi-element-order-set! element (style-query style 'order 0))
-      
-      (let ([display (style-query style 'display 'block)])
-	(mi-element-display-set! element display)    
-	(case display
-	  [block
-	   (let-values ([(x y w h) (layout-element element)])
-	     (mi-element-x-set! element x)
-	     (mi-element-y-set! element y)
-	     (mi-element-w-set! element w)
-	     (mi-element-h-set! element h))]
-	  [flex
-					;(mi-element-x-set! element last-x)
-					;(mi-element-y-set! element last-y)
-					;(mi-element-w-set! element last-w)
-					;(mi-element-h-set! element last-h)
-					;(mi-element-add-child (mi-element-parent element) element)
-	   #t
-	   ]
-	  [else (printf "create-element: error wrong value for display: ~d~n" display)]))
-
-      (cond [(eq? (mi-element-display (mi-element-parent element)) 'flex)
+      (cond [(and (mi-element-parent element) 
+		  (eq? (mi-element-display (mi-element-parent element)) 
+		       'flex))
 	     (mi-element-x-set! element last-x)
 	     (mi-element-y-set! element last-y)
 	     (mi-element-w-set! element last-w)
 	     (mi-element-h-set! element last-h)
 	     (mi-element-add-child (mi-element-parent element) element)])
-
-      (let ([z-index (style-query style 'z-index 'auto)])
-	(if (eq? z-index 'auto)
-	    (mi-element-z-index-set! element (mi-element-z-index (mi-element-parent element)))
-	    z-index))
 
 					;(define border (style-query style 'border 'none))
 					;
@@ -181,7 +144,7 @@
       ;; 	   [(solid ,width ,color) (values 'solid width color)] ))
 
 
-      (parameterize ([mi-el element])
+      (p10e ([mi-el element])
 	(let* ([r (thunk)]
 	       [sz (mi-element-content-size element)])
 	  (hashtable-set! layout-state id #f)
@@ -199,7 +162,7 @@
 (define (mi-font-size) (mi-element-font-size (mi-el)))
 (define (mi-font-family) (mi-element-font-family (mi-el)))
 (define (mi-color) (mi-element-color (mi-el)))
-(define (mi-bg-color) (mi-element-bg-color (mi-el)))
+(define (mi-bg-color) (mi-element-background-color (mi-el)))
 (define (mi-border-radius) (mi-element-border-radius (mi-el)))
 (define (mi-border-color) (mi-element-border-color (mi-el)))
 (define (mi-border-width) (mi-element-border-width (mi-el)))
@@ -217,8 +180,155 @@
 (define mi-id
   (case-lambda 
     [() (mi-element-id (mi-el))]
-    [(id)
-     (let ([x (if id 
-		  (symbol->string id)
+    [(sub-id)
+     (let ([x (if sub-id 
+		  (symbol->string sub-id)
 		  (format "~d" (length (mi-element-children (mi-el)) )))]) 
        (string->symbol (string-append (symbol->string (mi-id)) "-" x)))]))
+
+
+(define-syntax define-css-element
+  (lambda (x)
+    (syntax-case x()
+      [(_ name default inherited transformer validator ...)
+	(with-syntax 
+	 ([function-name 
+	   (datum->syntax #'name 
+			  (string->symbol 
+			   (string-append 
+			     "mi-element-"
+			    (symbol->string 
+			     (syntax->datum #'name)))))] )
+	 #`(begin 
+	     (define (function-name element)
+	       (let ([v (mi-style-query element 'name default inherited)])
+		 (if (or (validator v) ...)
+		     (transformer element v)
+		     (errorf 'function-name "invalid attribute value ~d for element ~d" v (mi-element-id element)))))))])))
+
+(define (i-t element x) x)
+
+(define (in-list-validator . values)
+  (lambda (v)
+    (memq v values)))
+
+(define-css-element position 'static #f i-t
+  (in-list-validator 'static 'relative 'absolute))
+(define-css-element padding 0 #f i-t number?)
+(define-css-element margin 0 #f i-t number?)
+
+(define (color-validator v)
+  (or (color? v) (symbol? v) (and (list? v) (<= 4 (length v) 5)))) ;;TODO IMPROVE THIS
+(define (color-transformer e v)
+  (->color v))
+(define-css-element border-color 'black #f color-transformer color-validator)
+
+(define-css-element border-style 'none #f i-t
+  ;;not yet supported: 'dotted 'dashed 'double 'groove 'ridge 'inset 'outset
+  (in-list-validator 'none 'hidden 'solid)) 
+
+(define (border-width-transformer element width)
+  (if (number? width) 
+      width
+      (case width
+	[thin 0.5]
+	[medium 1]
+	[thick 2])))
+
+(define-css-element border-width 'medium #f
+  border-width-transformer
+  number? 
+  (in-list-validator 'medium 'thin 'thick))
+
+(define-css-element border-radius 0 #f i-t number?)
+
+(define-css-element color 'black #t color-transformer color-validator)
+
+(define-css-element background-color 'transparent #f color-transformer color-validator)
+
+(define-css-element font-family "sans" #t i-t string?)
+
+(define (font-size-transformer element sz)
+  (if (number? sz) sz
+      (case sz
+	[medium 12]
+	[large 14]
+	[small 10]
+	[smaller (- (mi-element-font-size (mi-element-parent element)) 2)]
+	[larger  (+ (mi-element-font-size (mi-element-parent element)) 2)]
+	[x-small 8]
+	[x-large 16]
+	[xx-small 7]
+	[xx-large 18])))
+
+(define-css-element font-size 'medium #t
+  font-size-transformer 
+  number? 
+  (in-list-validator 'medium 'large 'small 'smaller 'larger 'x-small 'x-large 'xx-small 'xx-large))
+
+;;;normal|bold ; these are not supported: bolder|lighter|number
+(define-css-element font-weight 'normal #t i-t
+  (in-list-validator 'normal 'bold))
+
+(define-css-element font-style 'normal #t i-t
+  (in-list-validator 'normal 'italic 'oblique))
+
+(define (line-height-transformer e v)
+  (if (number? v) v
+      1.2))
+
+(define (eq-validator s)
+  (lambda (x)
+    (eq? s x)))
+
+(define-css-element line-height 'normal #t
+  line-height-transformer
+  number?
+  (eq-validator 'normal))
+
+(define-css-element display 'block #f i-t
+  (in-list-validator 'block 'flex)) ;; TODO: ADD SUPPORT FOR 'none
+
+(define-css-element justify-content 'flex-start #f i-t
+  ;; WARNING: STRETCH IS A MIOGUI EXTENSION
+  (in-list-validator 'flex-start 'flex-end 'space-around 'space-between 'center 'stretch))
+
+(define-css-element align-items 'stretch #f i-t
+  (in-list-validator 'flex-start 'flex-end 'center 'stretch))
+
+(define-css-element align-self 'auto #f i-t
+  (in-list-validator 'auto 'flex-start 'flex-end 'center 'stretch))
+
+(define-css-element flex-direction 'row #f i-t
+  (in-list-validator 'row 'column 'row-reverse 'column-reverse))
+
+(define-css-element flex 1 #f i-t number?)
+
+(define-css-element min-width 0 #f i-t number? list?)
+
+(define-css-element min-height 0 #f i-t number? list?)
+
+(define-css-element text-align 0 #f i-t number? list?)
+
+(define-css-element box-sizing 'border-box #f i-t
+  (eq-transformer 'border-box))
+
+(define-css-element order 0 #f i-t
+  number?)
+
+(define (z-index-transformer element v)
+  (if (number? v) v
+      (let ([parent (mi-element-parent element)])
+	(if parent (mi-element-z-index parent) 0))))
+
+(define-css-element z-index 'auto #f 
+  z-index-transformer
+  number?
+  (eq-validator 'auto))
+
+(define-css-element left 0 #f i-t number?)
+(define-css-element top 0 #f i-t number?)
+(define-css-element width 'auto #f i-t
+  number? list? (in-list-validator 'auto 'expand))
+(define-css-element height 'auto #f i-t
+  number? list? (in-list-validator 'auto 'expand))

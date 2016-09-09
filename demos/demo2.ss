@@ -27,7 +27,7 @@
 		       (border-width 1) (border-color black)]
 		[label ==>
 		       (color black) (padding 5) 
-		       (border-width 1) (border-color blue)]
+		       (background-color white)]
 		[slider ==> (height 20) (color black) (padding 2)]
 
 		[(id panel-1) ==> 
@@ -35,7 +35,7 @@
 		 (background-color (rgb 125 125 125))
 		 (display flex)
 		 (justify-content space-around)
-		 (align-items flex-center)
+		 (align-items center)
 		 (flex-direction column)]
 		[(id label1) ==>
 		 (align-self stretch)

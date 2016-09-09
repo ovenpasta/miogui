@@ -40,7 +40,7 @@
   (let ( [justify-content (mi-element-justify-content parent)]
 	 [align-items (mi-element-align-items parent)]
 	 [flex-direction (mi-element-flex-direction parent)] 
-	 [direction (mi-element-direction parent)]
+	 ;[direction (mi-element-direction parent)]
 	 [children (sort (lambda (a b) 
 			   (< 
 			    (mi-element-order a)
@@ -56,8 +56,8 @@
 	   )
        (define (default-size e)
 	 (let* ([csz (mi-element-content-size e)]
-	        [w (style-query (mi-element-style e) 'min-width 0)]
-		[h (style-query (mi-element-style e) 'min-height 0)])
+	        [w (mi-element-min-width e)]
+		[h (mi-element-min-height e)])
 	   (let-values ([(max-w max-h)
 			 (if (list? csz)
 			     (values (max w (+ (car csz) (* (mi-element-padding e) 2)))
@@ -125,7 +125,7 @@
 			    (set! cross-pos p-cross-pos)]
 			   [flex-end
 			    (set! cross-pos (- (+ p-cross-pos p-cross-size ) cross-size))]
-			   [flex-center
+			   [center
 			    (set! cross-pos (+ p-cross-pos 
 					       (- (/ p-cross-size 2) (/ cross-size 2))))]
 			   [baseline (printf "layout-flex: error baseline not supported! defaulting to flex-start~n")
@@ -245,11 +245,11 @@
 	 [csz (mi-element-content-size element)]
 	 [w* (case w 
 	       [expand 0]
-	       [none (+ (* 2 padding) (if (list? csz) (car csz) 0))]
+	       [auto (+ (* 2 padding) (if (list? csz) (car csz) 0))]
 	       [else w])]
 	 [h* (case h
 	       [expand 0]
-	       [none  (+ (* 2 padding) (if (list? csz) (cadr csz) 0))]
+	       [auto  (+ (* 2 padding) (if (list? csz) (cadr csz) 0))]
 	       [else h])]
 	 )
     (check-arg number? w* layout-element)

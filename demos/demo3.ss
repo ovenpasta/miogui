@@ -9,16 +9,17 @@
 		       (border-color black)]
 		[label ==>
 		 (align-self flex-start)
-		       (color red) 
-		       (padding 5) 
-		       (border-width 1) 
-		       (border-color blue)]
+		 (color red) 
+		 (padding 5) 
+		 (border-width 1) 
+		 (border-color blue)
+		 (background-color white)]
 
 		[(class first) ==>
 		 (align-self flex-start)
 		 (min-height 40) (min-width 160)]
 		[(class second) ==>
-		 (align-self flex-center) ]
+		 (align-self center) ]
 		[(class third) ==>
 		 (align-self flex-end)
 		 (order 2) (color blue) ]
@@ -57,7 +58,7 @@
 			(p10e ([mi-class 'first])
 			      (label (mi-id 'l1) "l1: flex-start"))
 			(p10e ([mi-class 'second])
-			      (label (mi-id 'l2) "l2: flex-center"))
+			      (label (mi-id 'l2) "l2: center"))
 			(p10e ([mi-class 'third]) 
 			      (label (mi-id 'l3) "l3: flex-end , order 1"))
 			(p10e ([mi-class 'fourth])

@@ -28,14 +28,18 @@
      (let loop ()
        ;;(define (sdl-poll-event* . x)
        ;; (with-interrupts-disabled (apply sdl-poll-event x)))
-       (let ([el (make-mi-element 'window 'window-1 #f #f #f)])
+       (let ([el (make-mi-element 'window 'window-1 #f #f
+				  (make-mi-element 'null 'null #f #f #f))])
 	 (mi-el el)
 	 (mi-element-w-set! el (mi-window-width))
 	 (mi-element-h-set! el (mi-window-height))
 	 (mi-element-x-set! el 0)
 	 (mi-element-y-set! el 0)
-	 (mi-element-style-set! el `((width ,(mi-window-width)) (height ,(mi-window-height))))
-	 (mi-element-position-set! el 'absolute))
+	 (mi-element-style-set! el (alist->hashtable 
+				    `((z-index 0)
+				      (width ,(mi-window-width)) 
+				      (height ,(mi-window-height))
+				      (position absolute)))))
 
        (guard (x [else (printf "ERROR IN RENDER ") (display-condition x)(newline) #;(sleep-s 1) #f])
 	      (render-stuff (miogui-user-render)))

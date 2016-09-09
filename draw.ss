@@ -66,7 +66,7 @@
        (with-cairo (mi-cr)
 		   (set-source-color bg-color)
 		   (fill)))
-     (when (not-none? border-style)
+     (when (not (memq border-style '(none hidden)))
        (draw-path)
        (with-cairo (mi-cr)
 		   (set-line-width bw)

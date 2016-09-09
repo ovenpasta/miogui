@@ -35,12 +35,14 @@
 		      (background-color (rgb 125 125 125))]
 		     [(> (id panel-1) button) ==> (width 27 %) (height 10 %)]
 		     [panel ==> 
+			    (background-color white)
 			    (padding 10) (width 100 %) (border-style solid)
 			    (border-width 1) (border-color black)]
 		     [label ==>
+			    (background-color white) 
 			     (color black) (padding 5) (height 25)
 			     (border-width 1) (border-color blue)]
-		     [hslider ==> (height 40) (color black)]
+		     [hslider ==> (height 40) (color black) (background-color white) ]
 		     [(id lbl2) ==> (width 90 %) (margin 0)]
 		     [(id tg1) ==> (border-width 1) (border-color red) (background-color red)
 		      (width expand) (height 200) (padding 5)]
@@ -52,7 +54,7 @@
 			  ==> (width expand) (height expand) ]
 		     [(> (id panel3) label) ==> (width expand) ]
 		     [slider-box ==> (background-color blue) (border-style none)
-				 (border-radius 4)]
+				 (border-radius 4) ]
 		     [(id slider1) ==> (width expand) (padding 5)] 
 		     [(id slider2) ==> (width 25) (height expand) (padding 2)]
 		     ))
