@@ -17,15 +17,13 @@
 		[(class first) ==>
 		 (align-self flex-start)
 		 (min-height 40) (min-width 160)]
-
 		[(class second) ==>
 		 (align-self flex-center) ]
 		[(class third) ==>
 		 (align-self flex-end)
 		 (order 2) (color blue) ]
 		[(class fourth) ==>
-		 (align-self stretch) 
-		 (align-self flex-end) ]
+		 (align-self stretch) ]
 
 		[(class great) ==> 
 		 (position absolute) (display flex)
