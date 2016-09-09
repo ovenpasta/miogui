@@ -15,8 +15,12 @@
 ;; limitations under the License.
 
 ;(trace make-mi-element)
-(define (event-loop)
+(define miogui-user-render (make-parameter values))
+
+
+(define (miogui-run)
   (define last-frame-time (current-time))
+  (mi-frame-number 0)
   (printf "starting event loop..\n")
   (sdl-start-text-input)
   (call/cc 
@@ -30,10 +34,11 @@
 	 (mi-element-h-set! el (mi-window-height))
 	 (mi-element-x-set! el 0)
 	 (mi-element-y-set! el 0)
+	 (mi-element-style-set! el `((width ,(mi-window-width)) (height ,(mi-window-height))))
 	 (mi-element-position-set! el 'absolute))
 
        (guard (x [else (printf "ERROR IN RENDER ") (display-condition x)(newline) #;(sleep-s 1) #f])
-	      (render-stuff))
+	      (render-stuff (miogui-user-render)))
        
        (let poll-event-loop ()
 	 (sdl-let-ref-call 
@@ -94,6 +99,7 @@
        ;(let ([t (time-nanosecond (time-difference (current-time) last-frame-time ))])
        ;  (printf "t: ~d ms ~d fps~n" (exact->inexact (/ t 1000000)) (exact->inexact (/ 1000000000 t))))
        (set! last-frame-time (current-time))
+       (mi-frame-number (+ (mi-frame-number) 1))
        ;(sdl-delay (exact (truncate (/ 1000. (fps)))))
        (my-local-repl)
        (loop)

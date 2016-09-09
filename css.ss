@@ -14,62 +14,7 @@
 ;; See the License for the specific language governing permissions and
 ;; limitations under the License.
 
-(define default-stylesheet '(box ))
-
-(define stylesheet '([* ==> 
-			(position static)
-			(box-sizing border-box)
-			(font-family "Sans")
-			(font-size 12)
-			(line-height 1.2)
-			(z-index auto)]
-		     [button ==>
-			     (width 100) 
-			     (height 50) 
-			     (color red)
-			     (background-color (rgbf 0 1 0 0.5))
-			     (border-style solid)
-			     (border-color red)
-			     (border-width 1) 
-			     (border-radius 7) ]
-		     [(and button (: hover)) ==> (border-color green) (background-color blue)]
-		     [(and (: hover) (id button2)) ==> (background-color (rgbf 0.5 0.5 0.5)) (color blue)]
-		     [(and (: pressed) (id button2)) ==>
-		      (background-color (rgb 200 200 200)) (color blue) (transition-duration 0)]
-		     [(> * (id button1)) ==> (border-width 4)]
-		     ;[(or button (id button1)) ==> (width 300)]
-		     [(id button1) ==>
-		      (font-weight bold)
-		      (padding 7)]
-		     [(id button2) ==> (left 200) (top 200) (width 150 !important)
-		      (background-color black)
-		      (transition-duration 1)]
-		     [(id panel-1) ==> 
-		      (width 100 %) (height 89 %) (top 0) (left 0) (position absolute) 
-		      (background-color (rgb 125 125 125))]
-		     [(> (id panel-1) button) ==> (width 27 %) (height 10 %)]
-		     [panel ==> 
-			    (padding 10) (width 100 %) (border-style solid)
-			    (border-width 1) (border-color black)]
-		     [label ==>
-			     (color black) (padding 5)
-			     (border-width 1) (border-color blue)]
-		     [slider ==> (height 20) (color black)]
-		     [(id lbl2) ==> (width 90 %) (margin 0)]
-		     [(id tg1) ==> (border-width 1) (border-color red) (background-color red)
-		      (width expand) (height 200) (padding 5)]
-		     [(id panel-2) ==> (height 200) (width expand) (border-color red) (border-width 1)]
-		     [(id tg1::panel) ==>  (height 100 ) (width expand)]
-		     [(id tg1::button) ==> (height 50  ) (width expand)]
-		     [(> (id panel-1) slider) ==> (width expand) (margin 5)]
-		     [(> (id tg1::panel) panel)
-			  ==> (width expand) (height expand) ]
-		     [(> (id panel3) label) ==> (width expand) ]
-		     [slider-box ==> (background-color blue) (border-style none)
-				 (border-radius 4)]
-		     [(id slider1) ==> (height 25) (width expand) (padding 5)] 
-		     [(id slider2) ==> (width 25) (height expand) (padding 2)]
-		     ))
+(define stylesheet (make-parameter '()))
 
 (define (hashtable->alist ht)
    (let-values ([(keys values) (hashtable-entries ht)])
@@ -137,7 +82,7 @@
   
   (define matches '())
   (define hash (make-eq-hashtable))
-  (define entries+style (append (list `(%%style ==>  ,@style)) stylesheet))
+  (define entries+style (append (list `(%%style ==>  ,@style)) (stylesheet)))
   (let loop ([entries entries+style] [props '()])
     (unless (null? entries)
 	    (let ([e (car entries)])
@@ -147,44 +92,49 @@
 		(define (process-selector selector type id* class* element* pseudo* specifity)
 		 ; (printf "selector: ~d id: ~d pseudo: ~d~n" selector id* pseudo*)
 		  (match selector
-			 ['%%style (match specifity [(a b c d e) (list 1 b c d e)])]
-			 [('id (? (cut eq? <> id*) x)) (match specifity [(a b c d e) (list a (+ 1 b) c d e)])]
-			 [('class (? (cut eq? <> class*) x)) (match specifity [(a b c d e) (list a b (+ 1 c) d e)])] 
-			 [(': (? (cut eq? <> pseudo*) x)) (match specifity [(a b c d e) (list a b (+ 1 c) d e)])]
-			 [('and sel ...) (let ([l (map (cut process-selector <> 'and 
-							    id* class* element* pseudo* specifity) sel)])
-					   ;(printf "L: ~d\n" l)
-					   (if (let loop ([l l])
-						 (if (null? l) #t
-						     (if (equal? null-spec (car l)) #f
-							 (loop (cdr l)))))
-					       (fold (lambda (x acc) (map + x acc)) null-spec l)
-					       null-spec))]
-			 [('or sel ...) (apply map + (map (cut process-selector <> 'or 
-							       id* class* element* pseudo* specifity) sel))]
-			 [('> e f) (let ([a (process-selector e '>e 
-							      (mi-element-id parent) 
-							      (mi-element-class parent)
-							      (mi-element-el parent)
-							      (mi-element-pseudo parent)
-							      null-spec)]
-					 [b (process-selector f '>f id class el pseudo null-spec)])
-				     (if (not (or (equal? a null-spec) (equal? b null-spec)))
-					 (map + a b)
-					 specifity))]
-			 ;[('+ e f) (for-each (cut process-selector <> '+) sel)]
-			 ['* '(0 0 0 0 1)]
-			 [(? (cut eq? <> element*) e) 
-			  (match specifity [(a b c d e) (list a b c (+ d 1) e)])]
-			 [else 
-			  ;;(printf "~d does not match~n" (car selectors)) 
-			  specifity]))
+		    ['%%style (match specifity [(a b c d e) (list 1 b c d e)])]
+		    [('id (? (cut eq? <> id*) x)) 
+		     (match specifity [(a b c d e) (list a (+ 1 b) c d e)])]
+		    [('class (? (cut eq? <> class*) x)) 
+		     (match specifity [(a b c d e) (list a b (+ 1 c) d e)])] 
+		    [(': (? (cut eq? <> pseudo*) x)) (match specifity [(a b c d e) (list a b (+ 1 c) d e)])]
+		    [('and sel ...) 
+		     (let ([l (map (cut process-selector <> 'and 
+					id* class* element* pseudo* specifity) sel)])
+					;(printf "L: ~d\n" l)
+		       (if (let loop ([l l])
+			     (if (null? l) #t
+				 (if (equal? null-spec (car l)) #f
+				     (loop (cdr l)))))
+			   (fold (lambda (x acc) (map + x acc)) null-spec l)
+			   null-spec))]
+		    [('or sel ...) 
+		     (apply map + (map (cut process-selector <> 'or 
+					    id* class* element* pseudo* specifity) sel))]
+		    [('> e f) 
+		     (let ([a (process-selector e '>e 
+						(mi-element-id parent) 
+						(mi-element-class parent)
+						(mi-element-el parent)
+						(mi-element-pseudo parent)
+						null-spec)]
+			   [b (process-selector f '>f id class el pseudo null-spec)])
+		       (if (not (or (equal? a null-spec) (equal? b null-spec)))
+			   (map + a b)
+			   specifity))]
+					;[('+ e f) (for-each (cut process-selector <> '+) sel)]
+		    ['* '(0 0 0 0 1)]
+		    [(? (cut eq? <> element*) e) 
+		     (match specifity [(a b c d e) (list a b c (+ d 1) e)])]
+		    [else 
+		     ;;(printf "~d does not match~n" (car selectors)) 
+		     specifity]))
 		(let ([sp (process-selector (car selectors) 'type id class el pseudo '(0 0 0 0 0))])
-		  ;(printf "Specifity: ~d~n" sp)
+					;(printf "Specifity: ~d~n" sp)
 		  (unless (equal? sp null-spec)
-			  (set! matches (cons (cons sp attribs) matches))))))
+		    (set! matches (cons (cons sp attribs) matches))))))
 	    (loop (cdr entries) '())))
-  ;(pretty-print matches)
+					;(pretty-print matches)
   (for-each
    (lambda (x)
      (for-each (lambda (pair)

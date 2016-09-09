@@ -74,33 +74,10 @@
   (check-arg time? x time-float)
   (+ (time-second x) (/ (time-nanosecond x) 10e8)))
 
-(define color-table '((black (0 0 0 1))
-		      (white (1 1 1 1))
-		      (red (1 0 0 1))
-		      (green (0 1 0 1))
-		      (blue (0 0 1 1))
-		      (transparent (0 0 0 0))))
-
-(define (name->color x)
-  (check-arg symbol? x name->color)
-  (cond [(assq x color-table) => (lambda (y) (apply make-color (cadr y)))]
-	[else #f]))
-
-(define (->color x)
-  (cond
-    [(color? x) x]
-    [(symbol? x) (name->color x)]
-    [(list? x) (case (car x) 
-		 [(rgb rgba) (apply make-color (map (cut / <> 255) (cdr x)))]
-		 [(rgbf rgbaf)  (apply make-color (cdr x))]
-		 [else #f])]
-    [else (errorf '->color "unknown color ~d" x)]))
-
-
 ;; FIXME FIND A WAY TO CREATE A MACRO THAT GENERATES A UNIQUE ID EACH TIME IT IS EXPANDED
 ;; USE make-compile-time-value perhaps
  
- (alias p10e parameterize)
+(alias p10e parameterize)
 
 (define (compare-hashes a b)
   (check-arg hashtable? a compare-hashes)

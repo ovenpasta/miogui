@@ -45,15 +45,17 @@
 	   (end-layout (mi-el)))))
   (state))
 
+
 (define (button id text)
   (create-element 'button id #t
    (lambda ()
      (define-values (x y w h) (values (mi-x) (mi-y) (mi-w) (mi-h)))
-     
      (draw-rect x y w h)
-     (draw-text/centered text (+ 0 x (/ w 2)) (+ 0 y (/ h 2)))
+     (let ([extents (draw-text/centered text
+					(+ 0 x (/ w 2)) 
+					(+ 0 y (/ h 2)))])
+       (mi-element-content-size-set! (mi-el) extents))
      
-     ;;return
      (and (not (mi-mouse-down?))
 	  (eq? (mi-hot-item) id)
 	  (eq? (mi-active-item) id)))))
@@ -81,12 +83,13 @@
 		      (mi-element-content-size-set! (mi-el) (list w* h*)))
 		    #f)))
 
+  
 (define (debug-tooltip)
   (define id (mi-hot-item))
   (when id
 	(let-values ([(x y w h) (get-last-coords id)])
 	  (if (region-hit? x y w h)
-	      (parameterize ([mi-style `((z-index 1)
+	      (p10e ([mi-style `((z-index 1)
 					 (position absolute) 
 					 (left ,(mi-mouse-x)) 
 					 (top ,(mi-mouse-y)) )])

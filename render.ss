@@ -30,7 +30,7 @@
   
   (mi-cr (cairo-create (mi-cairo-surface)))
   (with-cairo (mi-cr)
-	      (set-source-rgb 0 0 0) ; blank scrren
+	      (set-source-rgb 1 1 1) ; blank scrren
 	      (rectangle 0 0 (mi-window-width) (mi-window-height))
 	      (fill))
   (mi-hot-item #f))
@@ -52,58 +52,16 @@
   (sdl-free-garbage))
 
 (define last-frame (current-time))
-(define stat-fps 0)
-(define toggle (make-parameter #f))
-(define tg1-state (make-parameter #f))
 
-(define slider-state 
-  (make-parameter 0.25 
-		  (lambda (x) 
-		    (fps (+ 1 (* 100 x)))
-		    x)))
+(define mi-stat-fps 0)
 
-(define (render-stuff&)
+(define (render-stuff user-render-func)
   (render-prepare)
-  (panel 'panel-1
-	 (lambda () 
-	   (if (button 'button1 "CIAO")
-	       (printf "BUTTON CLICKED!\n"))
-	   (if (button 'button2 "NAMAST66E")
-	       (printf "BUTTON CLICKED NAMASTE!\n"))
-	   (mi-force-break 'panel-1)
-	   (when (button 'button3 (format "FPS: ~,2F" stat-fps))
-		 (printf "BUTTON3 CLICKED!\n")
-		 (toggle (not (toggle))))
-	   (p10e ([mi-style '((width 200) (height 20))])
-		 (label 'lbl-active (format "~d" (mi-active-item)))
-		 (label 'lbl-hot (format "~d" (mi-hot-item)))
-		 (label 'lbl-md (format "~d" (mi-mouse-down?))))
-	   (mi-force-break 'panel-1)
-		 
-	   (if (toggle) 
-	       (panel 'panel-2 
-		      (lambda ()
-			(label 'lbl1 "lalalala"))))
-	   
-	   (toggle-panel 'tg1 tg1-state
-			 (lambda ()
-			   (vslider 'slider2 slider-state)
-			   (panel 'panel3 (lambda ()
-					    (label 'lbl3 "123455\n54321")
-					    (mi-force-break 'panel3)
-					    (label 'lbl4 "67890")))))
-	   
-	   (hslider 'slider1 slider-state)))
-
-  (debug-tooltip)
-  
-  (render-finish))
-
-(define (render-stuff )
-  (render-stuff&)
+  (user-render-func)
+  (render-finish)
   (let ([d (time-difference (current-time) last-frame)])
     ;(printf "frame-duration: ~d~n" (time-float d))
     ;(printf "fps: ~d~n" (/ 1. (time-float d)))
-    (set! stat-fps (/ 1. (time-float d)))
+    (set! mi-stat-fps (/ 1. (time-float d)))
     (set! last-frame (current-time))))
 

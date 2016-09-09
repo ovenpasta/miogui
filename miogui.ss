@@ -30,23 +30,24 @@
 (define mi-window-height (make-parameter 480))
 (define mi-sdl-texture (make-parameter #f))
 
-(define (init-sdl)
+(define (init-sdl window-title)
   (assert (= 0 (sdl-init (sdl-initialization 'video))))
   
-  (mi-window (sdl-create-window  "Hello World!" 100 100 
+  (mi-window (sdl-create-window window-title 100 100 
 				(mi-window-width) (mi-window-height) 
-				(sdl-window-flags 'shown)))
+				(sdl-window-flags 'shown 'resizable)))
   (assert (not (ftype-pointer-null? (mi-window))))
   
   (mi-renderer (sdl-create-renderer (mi-window) -1 
-				    (sdl-renderer-flags 'accelerated)));;; 'presentvsync)))
+				    (sdl-renderer-flags 'accelerated 'presentvsync)))
   (assert (not (ftype-pointer-null? (mi-renderer))))
 
   (mi-sdl-texture (sdl-create-texture (mi-renderer) (sdl-pixelformat 'argb-8888) 
 				      (sdl-texture-access 'streaming) 
 				      (mi-window-width) (mi-window-height))))
 
-(init-sdl)
+(define (fini-sdl)
+  (sdl-destroy-window (mi-window)))
 
 (define mi-mouse-x (make-parameter 0))
 (define mi-mouse-y (make-parameter 0))
@@ -58,12 +59,13 @@
 (define mi-cairo-surface (make-parameter #f))
 
 (define fps (make-parameter 25))
+(define mi-frame-number (make-parameter 0))
 
 (import (srfi s26 cut)) 
 (import (matchable))
 
 (include "utils.ss")
-
+(include "css-color.ss")
 (include "draw.ss")
 
 (include "css.ss")
@@ -82,5 +84,4 @@
       
 (include "event-loop.ss")
 
-(event-loop)
   
