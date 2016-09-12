@@ -55,6 +55,31 @@
 (define mi-hot-item (make-parameter #f))
 (define mi-active-item (make-parameter #f))
 (define mi-active-window 'none)
+(define mi-last-activable (make-parameter #f))
+
+(define mi-kbd-item (make-parameter #f))
+
+;; (define mi-keys (make-parameter '()))
+
+;; (define (mi-keys-add k)
+;;   (mi-keys (append (mi-keys) (list k))))
+
+;; (define (mi-keys-rm k)
+;;   (mi-keys (remove k (mi-keys))))
+
+;; (define (mi-keys-available)
+;;   (pair? (mi-keys)))
+
+;; (define (mi-keys-pop)
+;;   (if (pair? (mi-keys))
+;;       (let ([k (car (mi-keys))])
+;; 	(mi-keys (cdr (mi-keys)))
+;; 	k)
+;;       #f))
+
+(define mi-key (make-parameter #f))
+(define mi-keymod (make-parameter '()))
+
 (define mi-cr (make-parameter #f))
 (define mi-cairo-surface (make-parameter #f))
 

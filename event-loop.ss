@@ -53,15 +53,22 @@
 		 e sdl-event-t (type)
 		 (case (sdl-event-type-ref type)
 		   [quit (printf "quit\n") (quit)]
-		   [keydown (let* ([sym (event-keyboard-keysym-sym e)]
+		   [keydown (let* ([sym (sdl-event-keyboard-keysym-sym e)]
+				   [mod (sdl-event-keyboard-keysym-mod e)]
 				   [sym-name (sdl-keycode-ref sym)])
-			      (printf "keydown ~x ~d\n" sym (sdl-keycode-ref sym))
+			      (printf "keydown ~x ~x ~d ~d\n" sym mod (sdl-keycode-ref sym) 
+				      (sdl-keymod-decode mod))
+			      (mi-keymod (sdl-keymod-decode mod))
+			      (mi-key (sdl-keycode-ref sym))
+			      
 			      (if (eq? sym-name 'q) (quit)))]
+		   [keyup (let* ([sym (sdl-event-keyboard-keysym-sym e)]
+				   [sym-name (sdl-keycode-ref sym)])
+			      (printf "keyup ~x ~d\n" sym (sdl-keycode-ref sym)))]
 		   [textinput (let* ([ti (ftype-&ref sdl-event-t (text) e)]
 				     [text (char*-array->string
 					    (ftype-&ref sdl-text-input-event-t (text) ti) 32)])
-				(printf "text input \"~d\"\n" text )
-				(if (string=? text "q") (quit)))]
+				(printf "text input \"~d\"\n" text ))]
 		   [mousemotion (let* ([mousemotion (ftype-&ref sdl-event-t (motion) e)])
 				  (let-struct mousemotion sdl-mouse-motion-event-t
 					      (x y xrel yrel state)
@@ -75,12 +82,12 @@
 				 (let-struct wheel sdl-mouse-wheel-event-t (x y window-id)
 					     (printf "mouse wheel ~d ~d\n" x y)))]
 		   
-		   [mousebuttondown (let* ([button (event-mouse-button e)]
+		   [mousebuttondown (let* ([button (sdl-event-mouse-button e)]
 					   [button-name (sdl-button-ref button)])
 				      (printf "mouse down ~d ~d\n" button button-name)
 				      (when (eq? button-name 'left)
 					    (mi-mouse-down? #t)))]
-		   [mousebuttonup (let* ([button (event-mouse-button e)]
+		   [mousebuttonup (let* ([button (sdl-event-mouse-button e)]
 					 [button-name (sdl-button-ref button)])
 				    (printf "mouse up ~d ~d\n" button button-name)
 				    (when (eq? button-name 'left)

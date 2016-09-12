@@ -78,14 +78,34 @@
 	  [td #f] 
 	  [style #f] 
 	  [pseudo #f])
+      (when activable
+	(when (not (mi-kbd-item))
+	  (mi-kbd-item id)
+	  (printf "KBD ITEM: ~d~n" id))
+	(when (eq? (mi-kbd-item) id)
+	  (when (mi-key)
+	    (case (mi-key)
+	      #;['(shift tab) 
+	       (mi-kbd-item (mi-last-activable))
+	       (mi-keys-pop) (mi-keys-pop)]
+	      [tab
+	       (mi-kbd-item #f)(printf "TAB~n")
+	       (mi-key #f)]
+	      [return
+	       (mi-hot-item id) (mi-active-item id)
+	       (mi-key #f)
+	       ])))
+	  (mi-last-activable id))
+
       (when (and (number? last-w) (number? last-h) (region-hit? last-x last-y last-w last-h))
 	(mi-hot-item id)
 	(when (and activable (not (mi-active-item)) (mi-mouse-down?))
-	  (mi-active-item id))
+	  (mi-active-item id)
+	  (mi-kbd-item id))
 	(if (eq? (mi-active-item) id)
 	    (set! pseudo 'pressed)
 	    (set! pseudo 'hover)))
-
+      
       (set! element (make-mi-element el id (mi-class) pseudo (mi-el)))
       
       (set! style (stylesheet-resolve element))
@@ -308,7 +328,7 @@
 
 (define-css-element min-height 0 #f i-t number? list?)
 
-(define-css-element text-align 0 #f i-t number? list?)
+(define-css-element text-align 'left #f i-t number? (in-list-validator 'left 'center 'right))
 
 (define-css-element box-sizing 'border-box #f i-t
   (eq-transformer 'border-box))
