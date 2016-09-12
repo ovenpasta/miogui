@@ -30,7 +30,7 @@
 		[slider ==> (height 20) (color black) (padding 2)]
 
 		[(id panel-1) ==> 
-		 (width 640) (height 480) (top 0) (left 0) (position absolute) 
+		 (width 600) (height 480) (top 0) (left 0) (position absolute) 
 		 (background-color (rgb 125 125 125))
 		 (display flex)
 		 (justify-content space-around)
@@ -38,11 +38,17 @@
 		 (flex-direction column)]
 		[(id label1) ==>
 		 (align-self stretch)]
+		[ button ==> (text-align center)]
+		[ label ==> (text-align center)]
+		[textline ==> (background-color white)
+			  (padding 5)
+			  (min-width 200) (text-align right)
+			  (color black)]
 		))
 
 
 (init-sdl "buttons")
-
+(define my-text (make-parameter "some editable text!"))
 (miogui-user-render
  (lambda ()
   (fps 25)
@@ -55,7 +61,8 @@
 	       (printf "BUTTON 2 CLICKED!\n"))
 	   (when (button 'button3 (format "FPS: ~,2F" mi-stat-fps))
 		 (printf "BUTTON3 CLICKED!\n"))
-	   (label 'label1 "1\nGOOD MORNING!\nLine 2\nLine 3\nLine 4")))
+	   (label 'label1 "1\nGOOD MORNING!\nLine 2\nLine 3\nLine 4")
+	   (textline 'text1 my-text)))
   (debug-tooltip)))
 
 (miogui-run)

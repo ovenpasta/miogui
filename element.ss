@@ -107,8 +107,9 @@
 	    (set! pseudo 'hover)))
       
       (set! element (make-mi-element el id (mi-class) pseudo (mi-el)))
-      
-      (set! style (stylesheet-resolve element))
+      (guard (e [else (printf "ops in stylesheet resolve: ") (display-condition e)
+		      (newline) (raise e)])
+	(set! style (stylesheet-resolve element)))
       (hashtable-set! style-table id style)
       (mi-element-style-set! element style)
       
@@ -189,7 +190,7 @@
 (define (mi-border-style) (mi-element-border-style (mi-el)))
 (define (mi-z-index) (mi-element-z-index (mi-el)))
 (define (mi-line-height) (mi-element-line-height (mi-el)))
-
+(define (mi-text-align) (mi-element-text-align (mi-el)))
 (define (mi-parent) (mi-element-parent (mi-el)))
 (define (mi-padding) (mi-element-padding (mi-el)))
 (define mi-class (make-parameter #f))
@@ -205,6 +206,13 @@
 		  (symbol->string sub-id)
 		  (format "~d" (length (mi-element-children (mi-el)) )))]) 
        (string->symbol (string-append (symbol->string (mi-id)) "-" x)))]))
+
+
+(define (mi-wset id name value)
+  (putprop id name value))
+
+(define (mi-wget id name default)
+  (getprop id name default))
 
 
 (define-syntax define-css-element

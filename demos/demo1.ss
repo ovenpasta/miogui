@@ -42,7 +42,8 @@
 			    (background-color white) 
 			     (color black) (padding 5) (height 25)
 			     (border-width 1) (border-color blue)]
-		     [hslider ==> (height 40) (color black) (background-color white) ]
+		     [hslider ==> (height 40) (color black) (background-color white)
+			      (text-align center) ]
 		     [(id lbl2) ==> (width 90 %) (margin 0)]
 		     [(id tg1) ==> (border-width 1) (border-color red) (background-color red)
 		      (width expand) (height 200) (padding 5)]

@@ -97,7 +97,8 @@
 		(if (and (number? val) (number? val2))
 		    (list name (number-transition val val2 ratio))
 		    (list name val2))]
-	       [(color background-color border-color) 
-		(list name (color-transition (->color val) (->color val2) ratio))]
+	       [(color background-color border-color)
+		(list name (guard (e [else (->color val2)])
+			     (color-transition (->color val) (->color val2) ratio)))]
 	       [else a])))
        (hashtable->alist style-a))))

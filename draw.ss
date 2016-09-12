@@ -73,23 +73,46 @@
 		   (set-source-color border-color)
 		   (stroke))))))
 
-(define (draw-text/centered text x y)
+(define (text-extents text)
+  
   (define font-size (mi-font-size))
   (define font-family (mi-font-family))
   (define font-style (mi-font-style))
   (define font-weight (mi-font-weight))
+  (define text-align (mi-text-align))
   (define color (mi-color))
 
-  (check-arg string? text draw-text/centered)
-  (check-arg number? x draw-text/centered)
-  (check-arg number? y draw-text/centered)
+  (check-arg string? text draw-text)
+
   (let ([extents (cairo-text-extents-create)])
     (cairo-set-font-size (mi-cr) font-size)
     (cairo-select-font-face  (mi-cr) (string-append font-family (string #\nul))
 					    (cairo-font-slant font-style) ;; normal|italic|oblique
 					    (cairo-font-weight font-weight)) ;; normal|bold
     (cairo-text-extents (mi-cr) text extents)
-    (let-struct extents cairo-text-extents-t (width height x-bearing y-bearing)
+    (let-struct extents cairo-text-extents-t 
+		(width height x-bearing y-bearing)
+		(list width height x-bearing y-bearing))))
+
+(define (draw-text text x y w h)
+  (define font-size (mi-font-size))
+  (define font-family (mi-font-family))
+  (define font-style (mi-font-style))
+  (define font-weight (mi-font-weight))
+  (define text-align (mi-text-align))
+  (define color (mi-color))
+
+  (check-arg string? text draw-text)
+  (check-arg number? x draw-text)
+  (check-arg number? y draw-text)
+  (let ([extents (cairo-text-extents-create)])
+    (cairo-set-font-size (mi-cr) font-size)
+    (cairo-select-font-face  (mi-cr) (string-append font-family (string #\nul))
+					    (cairo-font-slant font-style) ;; normal|italic|oblique
+					    (cairo-font-weight font-weight)) ;; normal|bold
+    (cairo-text-extents (mi-cr) text extents)
+    (let-struct extents cairo-text-extents-t 
+		(width height x-bearing y-bearing)
 		(draw!
 		 (lambda ()
 		   (cairo-set-font-size (mi-cr) font-size)
@@ -99,11 +122,28 @@
 		   
 					;		(printf "x ~d y ~d~n" x y)
 		   (cairo-set-source-color (mi-cr) color)
-		   (cairo-move-to (mi-cr) 
-				  (- x (/ width 2) x-bearing )
-				  (- y (/ height 2) y-bearing))
+		   (case text-align
+		     [left
+		      (cairo-move-to (mi-cr) 
+				     (- x x-bearing )
+				     (- (+ y (/ h 2) (/ font-size 2)) 0 ))]
+		     [center
+		      (cairo-move-to (mi-cr) 
+				     (- (+ x (/ w 2)) (/ width 2) x-bearing )
+				     (- (+ y (/ h 2) (/ font-size 2)) 0 ))]
+		     [right
+		      (cairo-move-to (mi-cr)
+				     (- (+ x w) width x-bearing)
+				     (- (+ y (/ h 2) (/ font-size 2)) 0 ))])
 		   (cairo-show-text (mi-cr) text)))
 		(list width height))))
+
+(define (draw-text/padding text x y w h)
+  (draw-text text 
+	     (+ (mi-padding) x)
+	     (+ (mi-padding) y)
+	     (- w (* 2 (mi-padding)))
+	     (- h (* 2 (mi-padding)))))
 
 (define (draw-box id class style)
   #t

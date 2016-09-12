@@ -9,6 +9,7 @@
 		       (border-color black)]
 		[label ==>
 		 (align-self flex-start)
+		 (text-align center)
 		 (color red) 
 		 (padding 5) 
 		 (border-width 1) 

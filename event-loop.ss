@@ -68,7 +68,8 @@
 		   [textinput (let* ([ti (ftype-&ref sdl-event-t (text) e)]
 				     [text (char*-array->string
 					    (ftype-&ref sdl-text-input-event-t (text) ti) 32)])
-				(printf "text input \"~d\"\n" text ))]
+				(printf "text input \"~d\"\n" text )
+				(mi-txt text))]
 		   [mousemotion (let* ([mousemotion (ftype-&ref sdl-event-t (motion) e)])
 				  (let-struct mousemotion sdl-mouse-motion-event-t
 					      (x y xrel yrel state)

@@ -79,6 +79,7 @@
 
 (define mi-key (make-parameter #f))
 (define mi-keymod (make-parameter '()))
+(define mi-txt (make-parameter #f))
 
 (define mi-cr (make-parameter #f))
 (define mi-cairo-surface (make-parameter #f))
