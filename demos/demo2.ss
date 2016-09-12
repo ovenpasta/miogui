@@ -1,9 +1,7 @@
 
 (include "miogui.ss")
 
-(stylesheet '(  [button ==>
-			(width 100) 
-			(height 50) 
+(stylesheet '(  [button ==> 
 			(color red)
 			(background-color (rgbf 0.1 0.1 0.8 1))
 			(border-style solid)
@@ -11,6 +9,7 @@
 			(border-width 1) 
 			(border-radius 7)
 			(padding 10)
+			(font-size 15)
 			(text-align center)
 			(transition-duration 0.2)]
 		[(and button (: hover)) ==> 
@@ -31,15 +30,14 @@
 		[slider ==> (height 20) (color black) (padding 2)]
 
 		[(id panel-1) ==> 
-		 (width 100 %) (height 89 %) (top 0) (left 0) (position absolute) 
+		 (width 640) (height 480) (top 0) (left 0) (position absolute) 
 		 (background-color (rgb 125 125 125))
 		 (display flex)
 		 (justify-content space-around)
 		 (align-items center)
 		 (flex-direction column)]
 		[(id label1) ==>
-		 (align-self stretch)
-		 (height 50)]
+		 (align-self stretch)]
 		))
 
 
@@ -57,7 +55,7 @@
 	       (printf "BUTTON 2 CLICKED!\n"))
 	   (when (button 'button3 (format "FPS: ~,2F" mi-stat-fps))
 		 (printf "BUTTON3 CLICKED!\n"))
-	   (label 'label1 "GOOD MORNING!")))
+	   (label 'label1 "1\nGOOD MORNING!\nLine 2\nLine 3\nLine 4")))
   (debug-tooltip)))
 
 (miogui-run)
