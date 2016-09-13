@@ -151,11 +151,16 @@
 		   [else #f])))))))
 
 
-(define (textline id text)
-  (import (only (srfi s14 char-sets) char-set)
-	  (only (thunder-utils) string-split string-replace))
+(import (only (srfi s14 char-sets) char-set char-set:digit char-set-contains?)
+	(only (thunder-utils) string-split string-replace))
+
+;; TODO: improve the cursor calculation and maybe use the cairo-show-glyphs api
+;; to have more control, then also text selection could be implemented...
+;; need to implement the position of cursor when clicked
+;; keyboard arrows, delete, backspace, home & end supported already
+(define (line-editor el id text validator)
   (create-element 
-   'textline id #t
+   el id #t
    (lambda ()
      (define-values (x y w h) (values (mi-x) (mi-y) (mi-w) (mi-h)))
      (define (cursor-pos) (mi-wget id 'cursor-pos 0))
@@ -167,9 +172,8 @@
 	  [(and (> dir 0) (< cp (string-length (text))))
 	   (mi-wset id 'cursor-pos (+ cp 1))])))
      (draw-rect x y w h)
-
-     (if (> (cursor-pos) (string-length (my-text)))
-	 (mi-wset id 'cursor-pos (string-length (my-text))))
+     (if (> (cursor-pos) (string-length (text)))
+	 (mi-wset id 'cursor-pos (string-length (text))))
 
      (when (eq? (mi-kbd-item) id)
        (let ([txt (text)]
@@ -189,7 +193,7 @@
 		     (substring txt 0 (cursor-pos))
 		     (substring txt (+ (cursor-pos) 1) txt-len))))
 	    (mi-key #f)]
-	   [left  (cursor-pos-move -1)  (mi-key #f)]
+	   [left  (cursor-pos-move -1) (mi-key #f)]
 	   [right (cursor-pos-move 1)  (mi-key #f)]
 	   [home  (mi-wset id 'cursor-pos 0)
 		  (mi-key #f)]
@@ -197,19 +201,21 @@
 		  (mi-key #f)]
 	   [else
 	    (when (mi-txt)
-	      (text (string-append (substring txt 0 (cursor-pos)) (mi-txt)
-				   (substring txt (cursor-pos) txt-len)))
-	      (mi-wset id 'cursor-pos (+ (string-length (mi-txt))
-					 (mi-wget id 'cursor-pos 0)))
+	      (when (and (string? (mi-txt)) (validator (string-ref (mi-txt) 0)))
+		(text (string-append (substring txt 0 (cursor-pos)) (mi-txt)
+				     (substring txt (cursor-pos) txt-len)))
+		(mi-wset id 'cursor-pos (+ (string-length (mi-txt))
+					   (mi-wget id 'cursor-pos 0))))
 	      (mi-txt #f))])))
 
+     ;; BLINKING CURSOR
      (let* ([extents (draw-text/padding (text) x y w h)]
 	    [w* (car extents)]
 	    [h* (mi-font-size)])
        (mi-element-content-size-set! (mi-el) (list w* h*))
        (when (and (eq? (mi-kbd-item) id)
 		  (not (= 0 (logand (bitwise-arithmetic-shift-right (sdl-get-ticks) 9) 1))))
-	 (let* ([cursor-pos (mi-wget id 'cursor-pos 0)]
+	 (let* ([cursor-pos (cursor-pos)]
 		[size (text-extents (string-replace (substring (text) 0 cursor-pos) #\space #\-))]
 		[padding (mi-padding)]
 		[text-align (mi-text-align)])
@@ -227,3 +233,37 @@
 			  (set-line-width 1)
 			  (stroke)))))))
      #f)))
+
+
+(define (textline id text)
+  (line-editor 'textline id text (lambda (x) x)))
+
+(define (intline id value)
+  (define str (number->string (if (number? (value)) (value) 0)))
+  (define txt (make-parameter (if str str "0")))
+
+  (line-editor 'intline id txt
+	       (lambda (x) 
+		 (char-set-contains? char-set:digit x)))
+  (let ([num (string->number (txt))])
+    (if num
+	(value num)
+	(value 0))))
+
+;; FIXME, improve floline editing behavior (now little bit buggy)
+;; maybe store the editing text as property, then if valid number assign that,
+;; otherwise keep the old value and somehow visualize that the field is not valid
+;; or better don't allow the user to insert invalid number
+
+(define (floline id value digits)
+  (define str (format (format "~d~d~d" "~," digits "F")(if (number? (value)) (value) 0)))
+  (define txt (make-parameter (if str str "0")))
+
+  (line-editor 'floline id txt
+	       (lambda (x) 
+		 (or (char-set-contains? char-set:digit x)
+		     (eq? x #\.))))
+  (let ([num (string->number (txt))])
+    (if num
+	(value num)
+	(value 0))))

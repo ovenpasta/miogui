@@ -40,15 +40,21 @@
 		 (align-self stretch)]
 		[ button ==> (text-align center)]
 		[ label ==> (text-align center)]
-		[textline ==> (background-color white)
-			  (padding 5)
-			  (min-width 200) (text-align right)
-			  (color black)]
+		[(or textline intline floline) 
+		 ==> 
+		 (background-color white)
+		 (padding 5)
+		 (min-width 200)
+		 (color black)]
+		[intline ==>  (text-align center)]
+		[floline ==> (text-align right)]
 		))
 
 
 (init-sdl "buttons")
 (define my-text (make-parameter "some editable text!"))
+(define my-int (make-parameter 543210))
+(define my-flo (make-parameter 3.141592))
 (miogui-user-render
  (lambda ()
   (fps 25)
@@ -62,7 +68,9 @@
 	   (when (button 'button3 (format "FPS: ~,2F" mi-stat-fps))
 		 (printf "BUTTON3 CLICKED!\n"))
 	   (label 'label1 "1\nGOOD MORNING!\nLine 2\nLine 3\nLine 4")
-	   (textline 'text1 my-text)))
+	   (textline 'text1 my-text)
+	   (intline 'int1 my-int)
+	   (floline 'flo1 my-flo 4)))
   (debug-tooltip)))
 
 (miogui-run)
