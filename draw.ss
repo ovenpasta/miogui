@@ -15,6 +15,7 @@
 ;; limitations under the License.
 
 (define draw-pool '())
+
 (define (round-rect x y width height br)
   (define-values (tlrx tlry trrx trry brrx brry blrx blry)
     (match br
@@ -152,6 +153,19 @@
      
 	   (draw-path))))
 
+(define (text-get-char-index-from-offset text)
+  
+  (define font-size (mi-font-size))
+  (define font-family (mi-font-family))
+  (define font-style (mi-font-style))
+  (define font-weight (mi-font-weight))
+  (define text-align (mi-text-align))
+  (define color (mi-color))
+
+  (check-arg string? text text-get-char-index-from-offset)
+
+  )
+  
 (define (text-extents text)
   (define font-size (mi-font-size))
   (define font-family (mi-font-family))
@@ -160,7 +174,7 @@
   (define text-align (mi-text-align))
   (define color (mi-color))
 
-  (check-arg string? text draw-text)
+  (check-arg string? text text-extents)
 
   (let ([extents (cairo-text-extents-create)])
     (cairo-set-font-size (mi-cr) font-size)
@@ -180,7 +194,7 @@
 
 (define (*int ptr) (ftype-ref int () ptr))
 
-(define (show-text cr text x y font-size)
+(define (get-text-glyphs cr text)
   (define glyphs* (cairo-glyph*-create))
   (define glyph-count (cairo-int-create))
   (define clusters* (cairo-text-cluster*-create))
@@ -196,33 +210,64 @@
   ;; THIS COULD BE CACHED SOMEWHERE?
   (unless (eq? 'success
 	       (cairo-scaled-font-text-to-glyphs
-		scaled-face x y text (string-length text)
+		scaled-face 0 0  text (string-length text)
 		glyphs* glyph-count
 		clusters* cluster-count
 		clusterflags))
 	  (raise (error 'show-text "stat error" stat)))
 
-  (set! clusters (cairo-guard-pointer (ftype-&ref cairo-text-cluster-t* (*) clusters*)))
-  (set! glyphs (cairo-guard-pointer (ftype-&ref cairo-glyph-t* (*) glyphs*)))
+  (values (cairo-guard-pointer (ftype-&ref cairo-text-cluster-t* (*) clusters*))
+	  (*int cluster-count)
+	  (cairo-guard-pointer (ftype-&ref cairo-glyph-t* (*) glyphs*))
+	  (*int glyph-count)
+	  scaled-face))
 
-  ;; WE COULD USE cairo-show-glyphs instead?
+
+(define (get-text-char-index-from-offset cr text offset)
+  (define-values (clusters cluster-count glyphs glyph-count scaled-face)
+    (get-text-glyphs cr text))
+  
+  (let loop ([glyph-index 0] [byte-index 0] [i 0] [x-pos 0])
+    (if (< i cluster-count)
+	(let* ([cluster       (ftype-&ref cairo-text-cluster-t () clusters i)]
+	       [clusterglyphs (ftype-&ref cairo-glyph-t () glyphs glyph-index)]
+	       [extents (cairo-text-extents-create)])
+	  (let-struct cluster cairo-text-cluster-t (num-glyphs num-bytes)
+		      (cairo-scaled-font-glyph-extents scaled-face clusterglyphs num-glyphs extents)
+		      (let ([ w (ftype-ref cairo-text-extents-t (x-advance) extents)])
+			(if  (and (< (+ x-pos (/ w 2)) offset ))
+			     (loop (+ glyph-index num-glyphs)
+				   (+ byte-index num-bytes)
+				   (+ i 1)
+				   (+ x-pos w))
+			     i))))
+	i)))
+
+(define (show-text cr text)
+  (define-values (clusters cluster-count glyphs glyph-count scaled-face)
+    (get-text-glyphs cr text))
+  
+  ;; we use cairo-show-glyphs instead of the below loop.
+  ;; if not special glyph spacing / kerning is needed... (at least by now)
+  (cairo-show-glyphs cr glyphs glyph-count)
+  #;
   (let loop ([glyph-index 0] [byte-index 0] [i 0])
-    (when (< i (*int cluster-count))
-	  (let* ([cluster       (ftype-&ref cairo-text-cluster-t () clusters i)]
-		 [clusterglyphs (ftype-&ref cairo-glyph-t () glyphs glyph-index)]
-		 [extents (cairo-text-extents-create)])
-	    (let-struct
-	     cluster cairo-text-cluster-t (num-glyphs num-bytes)
-	     (cairo-scaled-font-glyph-extents scaled-face clusterglyphs (*int glyph-count) extents)
-	     ;;(printf "extents: status: ~d num-glyphs: ~d num-bytes: ~d~n" (cairo-status cr) num-glyphs num-bytes)
-	     (with-cairo cr
-			 (glyph-path clusterglyphs num-glyphs)
-			 (set-line-width 0)
-			 (fill-preserve)
-			 (stroke))
-	     (loop (+ glyph-index num-glyphs)
-		   (+ byte-index num-bytes)
-		   (+ i 1)))))))
+  (when (< i cluster-count)
+  (let* ([cluster       (ftype-&ref cairo-text-cluster-t () clusters i)]
+  [clusterglyphs (ftype-&ref cairo-glyph-t () glyphs glyph-index)]
+  [extents (cairo-text-extents-create)])
+  (let-struct
+  cluster cairo-text-cluster-t (num-glyphs num-bytes)
+  (cairo-scaled-font-glyph-extents scaled-face clusterglyphs glyph-count extents)
+  ;;(printf "extents: status: ~d num-glyphs: ~d num-bytes: ~d~n" (cairo-status cr) num-glyphs num-bytes) ;
+  (with-cairo cr
+  (glyph-path clusterglyphs num-glyphs)
+  (set-line-width 0)
+  (fill-preserve)
+  (stroke))
+  (loop (+ glyph-index num-glyphs)
+  (+ byte-index num-bytes)
+  (+ i 1)))))))
 
 
 (define (draw-text text x y w h)
@@ -264,7 +309,7 @@
 			[else
 			 (cairo-translate (mi-cr) x (+ y height))])
 		      
-		      (show-text (mi-cr) text 0 0 font-size)
+		      (show-text (mi-cr) text)
 		      
 		      (cairo-identity-matrix (mi-cr))))
 		   

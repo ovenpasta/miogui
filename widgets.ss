@@ -166,10 +166,6 @@
 (import (only (srfi s14 char-sets) char-set char-set:digit char-set-contains?)
 	(only (thunder-utils) string-split string-replace))
 
-;; TODO: improve the cursor calculation and maybe use the cairo-show-glyphs api
-;; to have more control, then also text selection could be implemented...
-;; need to implement the position of cursor when clicked
-;; keyboard arrows, delete, backspace, home & end supported already
 (define (line-editor el id text validator)
   (create-element 
    el id #t
@@ -183,7 +179,10 @@
 	   (mi-wset id 'cursor-pos (- cp 1))]
 	  [(and (> dir 0) (< cp (string-length (text))))
 	   (mi-wset id 'cursor-pos (+ cp 1))])))
-     ;(draw-rect x y w h)
+     ;;(draw-rect x y w h)
+     (when (and (mi-active-item) (mi-mouse-down?) (eq? (mi-hot-item) id) (eq? (mi-state) 'ready))
+	   (mi-wset id 'cursor-pos (get-text-char-index-from-offset (mi-cr) (text) (- (mi-mouse-x) x (mi-padding))))
+	   (printf "cursor-pos: ~d mouse-x: ~d x: ~d\n" (cursor-pos) (mi-mouse-x) x))
      (if (> (cursor-pos) (string-length (text)))
 	 (mi-wset id 'cursor-pos (string-length (text))))
 
