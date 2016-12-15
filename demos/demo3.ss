@@ -14,6 +14,7 @@
 		 (padding 5) 
 		 (border-width 1) 
 		 (border-color blue)
+		 (border-left-width 5)
 		 (background-color white)]
 
 		[(class first) ==>

@@ -15,14 +15,17 @@
 ;; limitations under the License.
 
 #!chezscheme
-(import (chezscheme)
-	(sdl2)
-	(cairo))
 
 (debug-level 3)
 (optimize-level 0)
 (sdl-library-init)
 (cairo-library-init)
+(print-record #f)
+(run-cp0 (lambda (cp0 x) x))
+
+(import (chezscheme)
+	(sdl2)
+	(cairo))
 
 (define mi-window (make-parameter #f))
 (define mi-renderer (make-parameter #f))
@@ -101,6 +104,7 @@
 (include "transition.ss")
 
 (include "element.ss")
+(include "css-element.ss")
 
 (include "widgets.ss")
 

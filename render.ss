@@ -14,10 +14,13 @@
 ;; See the License for the specific language governing permissions and
 ;; limitations under the License.
 
+(define mi-state (make-parameter 'first))
+(define (layout-ready?) (eq? (mi-state) 'ready))
+
 (define (render-prepare)
   (define tex (mi-sdl-texture))
   (define r0 (make-ftype-pointer sdl-rect-t 0))
-
+  
   (sdl-set-render-draw-color (mi-renderer) 0 0 0 1)
   (sdl-render-clear (mi-renderer))
   (mi-cairo-surface 
@@ -29,19 +32,21 @@
 		      (cairo-format 'argb-32) (mi-window-width) (mi-window-height) pitch)))
   
   (mi-cr (cairo-create (mi-cairo-surface)))
+
   (with-cairo (mi-cr)
 	      (set-source-rgb 1 1 1) ; blank scrren
 	      (rectangle 0 0 (mi-window-width) (mi-window-height))
 	      (fill))
   (mi-hot-item #f))
 
-(define (render-finish)
-  (draw-all)
 
+(define (render-finish)
   (if (not (mi-mouse-down?))
       (mi-active-item #f)
       (if (not (mi-active-item))
 	  (mi-active-item '())))
+  (draw-all)
+  
   (sdl-unlock-texture (mi-sdl-texture))
   (sdl-render-copy (mi-renderer) (mi-sdl-texture)
 		   (make-ftype-pointer sdl-rect-t 0) 
@@ -56,9 +61,22 @@
 (define mi-stat-fps 0)
 
 (define (render-stuff user-render-func)
+  (set! old-element-table element-table)
+  (set! element-table (make-eq-hashtable))
   (render-prepare)
-  (user-render-func)
+
+  (p10e ([mi-state 'first])
+	;(printf "LAYOUT PASS: ~d~n" 'first)
+	(user-render-func))
+
+  (layout-element (mi-current-window))
+
+  (p10e ([mi-state 'ready])
+	;(printf "LAYOUT PASS: ~d~n" 'ready)
+	(user-render-func))
+
   (render-finish)
+  
   (let ([d (time-difference (current-time) last-frame)])
     ;(printf "frame-duration: ~d~n" (time-float d))
     ;(printf "fps: ~d~n" (/ 1. (time-float d)))

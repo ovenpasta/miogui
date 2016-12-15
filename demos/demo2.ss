@@ -1,13 +1,12 @@
 
 (include "miogui.ss")
 
-(stylesheet '(  [button ==> 
+(stylesheet '( [* ==> (font-family "Sans")]
+	       [button ==>  
 			(color red)
 			(background-color (rgbf 0.1 0.1 0.8 1))
-			(border-style solid)
-			(border-color (rgbf 0 0 0.9 1))
-			(border-width 1) 
-			(border-radius 7)
+			(border 1 solid (rgbf 0 0 0.9 1))
+			(border-radius 6)
 			(padding 10)
 			(font-size 15)
 			(text-align center)
@@ -17,14 +16,16 @@
 		[(> button label) ==> (color white)]
 		[(and button (: pressed)) ==>
 		 (background-color (rgb 200 200 200)) 
-		 (color blue) 
+		 (color blue)
 		 (transition-duration 0)]
-
-		[panel ==> 
+		[(: focus) ==> 
+		 (outline-style solid)
+		 (outline-width 3) 
+		 (outline-color (rgba 20 20 20 150))]
+		[panel ==>  
 		       (padding 10) (width 200 ) (height 200) 
-		       (border-style solid) (background-color red)
-		       (border-width 1) (border-color black)]
-		[label ==>
+		       (border 1 solid black) (background-color red)]
+		[label ==> 
 		       (color black) (padding 5) 
 		       (background-color white)]
 		[slider ==> (height 20) (color black) (padding 2)]
@@ -42,14 +43,14 @@
 		[ label ==> (text-align center)]
 		[(or textline intline floline) 
 		 ==> 
+		 (border-left 15 solid red)
+		 (color black) (border-style solid) 
 		 (background-color white)
 		 (padding 5)
-		 (min-width 200)
-		 (color black)]
-		[intline ==>  (text-align center)]
+		 (min-width 200)]
+		[intline ==>  (text-align center) ]
 		[floline ==> (text-align right)]
 		))
-
 
 (init-sdl "buttons")
 (define my-text (make-parameter "some editable text!"))
@@ -57,7 +58,7 @@
 (define my-flo (make-parameter 3.141592))
 (miogui-user-render
  (lambda ()
-  (fps 25)
+  ;(fps 25)
   (panel 'panel-1
 	 (lambda () 
 	   (if (button 'button1 "BUTTON 1")

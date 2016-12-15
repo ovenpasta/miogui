@@ -20,10 +20,11 @@
    'panel id #f 
    (lambda ()
      ;(printf "panel element: ~d ~d ~d ~d ~d~n" (mi-el) (mi-x) (mi-y) (mi-w) (mi-h))
-     (draw-rect (mi-x) (mi-y) (mi-w) (mi-h))
-     (start-layout (mi-el))
+     ;(draw-rect (mi-x) (mi-y) (mi-w) (mi-h))
+     ;(start-layout (mi-el))
      (children-thunk)
-     (end-layout (mi-el)))))
+     ;(end-layout (mi-el))
+     )))
 
 (define (symbol-append sym s)
   (string->symbol (string-append (symbol->string sym) s)))
@@ -34,15 +35,16 @@
    'toggle-panel id #f
    (lambda ()
      ;(printf "toggle-panel element: ~d ~d ~d ~d ~d~n" (mi-el) (mi-x) (mi-y) (mi-w) (mi-h)) 
-     (draw-rect (mi-x) (mi-y) (mi-w) (mi-h))
-     (start-layout (mi-el))
+     ;(draw-rect (mi-x) (mi-y) (mi-w) (mi-h))
+     ;(start-layout (mi-el))
      (if (button (symbol-append id "::button") "HI")
 	 (state (not (state))))
      (when (state)
 	   (mi-force-break id)
 	   (panel (symbol-append id "::panel") 
-		  children-thunk)
-	   (end-layout (mi-el)))))
+		  children-thunk))
+     ;(end-layout (mi-el))
+     ))
   (state))
 
 
@@ -50,11 +52,12 @@
   (create-element 'button id #t
    (lambda ()
      (define-values (x y w h) (values (mi-x) (mi-y) (mi-w) (mi-h)))
-     (draw-rect x y w h)
+     ;(draw-rect x y w h)
      (let ([extents (draw-text/padding text x y w h)])
        (mi-element-content-size-set! (mi-el) extents))
      
-     (and (not (mi-mouse-down?))
+     (and (layout-ready?) 
+	  (not (mi-mouse-down?))
 	  (eq? (mi-hot-item) id)
 	  (eq? (mi-active-item) id)))))
 
@@ -64,7 +67,7 @@
   (create-element 'label id #f
 		  (lambda ()
 		    (define-values (x y w h) (values (mi-x) (mi-y) (mi-w) (mi-h)))
-		    (draw-rect x y w h)
+		    ;(draw-rect x y w h)
 		    (let ([lines (string-split text (char-set #\newline))]
 			  [x* (+ (mi-padding) x)] 
 			  [y* (+ (mi-padding) y)] 
@@ -85,32 +88,41 @@
 		      (mi-element-content-size-set! (mi-el) (list w* h*)))
 		    #f)))
 
-  
+(define (menu id text thunk)
+  (if (button (symbol-append id "::button") text)
+      (mi-wset id 'showmenu (not (mi-wget id 'showmenu #f))))
+  (when (mi-wget id 'showmenu #f)
+    (p10e ([mi-style '((position absolute) (left 10) (top 10)
+		       (display flex) (flex-direction column) (align-items stretch))])
+	  (panel (symbol-append id "::panel") 
+		 thunk))))
+
 (define (debug-tooltip)
   (define id (mi-hot-item))
-  (when id
+  (when (and id (memq 'lalt (mi-keymod )))
 	(let-values ([(x y w h) (get-last-coords id)])
 	  (if (region-hit? x y w h)
 	      (p10e ([mi-style `((z-index 1)
 					 (position absolute) 
-					 (left ,(mi-mouse-x)) 
-					 (top ,(mi-mouse-y)) )])
-			    (label (symbol-append id "::debug") (symbol->string id)))))))
+					 (left ,(+ 5 (mi-mouse-x)))
+					 (top ,(+ 5 (mi-mouse-y))))])
+			    (label (symbol-append id "::debug") 
+				   (mi-element->string (mi-el-by-id id))))))))
 
 (define (hslider id state)
   (create-element 'hslider id #t
    (lambda ()
-     (let-values ([(x y w h) (values (mi-x) (mi-y) (mi-w) (mi-h))])
-       (draw-rect x y w h)
-       (start-layout (mi-el))
+     (let-values ([(x y w h) (get-last-coords id)])
+       ;(draw-rect x y w h)
+       ;(start-layout (mi-el))
        (let ([l (* (- w (* 2 (mi-padding)) 20) (state))])
 	 (p10e ([mi-style `((width 20) (height expand) (position relative) (left ,l))])
 	       (create-element 
 		'slider-box (symbol-append id "::box") #t
-		(lambda ()
-		  (let-values ([(x y w h) (values (mi-x) (mi-y) (mi-w) (mi-h))])
+		(lambda () #t
+		  #;(let-values ([(x y w h) (values (mi-x) (mi-y) (mi-w) (mi-h))])
 		    (draw-rect x y w h))))))
-       (end-layout (mi-el))
+       ;(end-layout (mi-el))
        (let ([extents (draw-text/padding (format "~,3F" (state)) x y w h)])
 	 (mi-element-content-size-set! (mi-el) extents))
        
@@ -127,17 +139,17 @@
 (define (vslider id state)
   (create-element 'vslider id #t
    (lambda ()
-     (let-values ([(x y w h) (values (mi-x) (mi-y) (mi-w) (mi-h))])
-       (draw-rect x y w h)
-       (start-layout (mi-el))
+     (let-values ([(x y w h) (get-last-coords id)])
+       ;(draw-rect x y w h)
+       ;(start-layout (mi-el))
        (let ([l (* (- h (* 2 (mi-padding)) 20) (state))])
 	 (p10e ([mi-style `((width expand) (height 20) (position relative) (top ,l))])
 	       (create-element 
 		'slider-box (symbol-append id "::box") #t
-		(lambda ()
-		  (let-values ([(x y w h) (values (mi-x) (mi-y) (mi-w) (mi-h))])
+		(lambda () #t
+		  #;(let-values ([(x y w h) (values (mi-x) (mi-y) (mi-w) (mi-h))])
 		    (draw-rect x y w h))))))
-       (end-layout (mi-el))
+       ;(end-layout (mi-el))
        ;(let ([extents (draw-text/centered (format "~,3F" (state)) (+ 0 x (/ w 2)) (+ 0 y (/ h 2)))])
        ;(mi-element-content-size-set! (mi-el) extents))
        
@@ -171,7 +183,7 @@
 	   (mi-wset id 'cursor-pos (- cp 1))]
 	  [(and (> dir 0) (< cp (string-length (text))))
 	   (mi-wset id 'cursor-pos (+ cp 1))])))
-     (draw-rect x y w h)
+     ;(draw-rect x y w h)
      (if (> (cursor-pos) (string-length (text)))
 	 (mi-wset id 'cursor-pos (string-length (text))))
 

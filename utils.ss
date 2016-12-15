@@ -82,7 +82,7 @@
 (define (compare-hashes a b)
   (check-arg hashtable? a compare-hashes)
   (check-arg hashtable? b compare-hashes)
-
+  ;(printf "~d ~d ~d~n" (mi-id) (hashtable->alist a) (hashtable->alist b))
   (letrec ([cmp (lambda (x y) 
 		  (< (symbol-hash (car x)) (symbol-hash (car y))))]
 	   [sort-hash (lambda (x)
@@ -94,3 +94,4 @@
 
 (define (not-none? x)
   (not (none? x)))
+

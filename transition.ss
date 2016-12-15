@@ -17,10 +17,6 @@
 (define transitions (make-eq-hashtable))
 
 
-(define (widget-old-style id)
-  (check-arg symbol? id widget-old-style)
-  (hashtable-ref style-table id (make-eq-hashtable)))
-
 (define (get-transition-ratio trans duration)
   (cond 
    [(zero? duration) 1.0]
@@ -93,12 +89,16 @@
 	 (if (equal? val val2)
 	     a
 	     (case name
-	       [(width height left top border-radius border-width font-size padding margin) 
+	       [(width height min-width min-height left top border-radius border-width font-size padding margin) 
 		(if (and (number? val) (number? val2))
 		    (list name (number-transition val val2 ratio))
 		    (list name val2))]
-	       [(color background-color border-color)
+	       [(color background-color border-left-color border-bottom-color border-right-color border-bottom-color)
 		(list name (guard (e [else (->color val2)])
 			     (color-transition (->color val) (->color val2) ratio)))]
-	       [else a])))
+	       [(border-color)
+		(list name (map (lambda (c c2)
+				  (color-transition c c2 ratio))
+				val val2))]
+	       [else (list name val2)])))
        (hashtable->alist style-a))))

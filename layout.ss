@@ -16,12 +16,12 @@
 
 (import (only (srfi s1 lists) fold))
 
-(define layout-state (make-eq-hashtable))
+;(define layout-state (make-eq-hashtable))
 
 (define (get-last-coords id)
   (check-arg symbol? id get-last-coords)
 
-  (let ([e (mi-el-by-id id)])
+  (let ([e (hashtable-ref old-element-table id #f)])
     (if e 
 	(parameterize ([mi-el e])
 		      (values (mi-x) (mi-y) (mi-w) (mi-h)))
@@ -41,14 +41,15 @@
 	 [align-items (mi-element-align-items parent)]
 	 [flex-direction (mi-element-flex-direction parent)] 
 	 ;[direction (mi-element-direction parent)]
-	 [children (sort (lambda (a b) 
-			   (< 
-			    (mi-element-order a)
-			    (mi-element-order b)))
-			   (reverse (mi-element-children parent)))]
+	 [children 
+	  (sort (lambda (a b) 
+		  (< (mi-element-order a) (mi-element-order b)))
+		(reverse (mi-element-children parent)))]
 	 [current-x 0] [current-y 0]
-	 [p-w (mi-element-w parent)][p-h (mi-element-h parent)]
-	 [p-x (mi-element-x parent)][p-y (mi-element-y parent)]
+	 [p-w (- (mi-element-w parent) (* 2 (mi-element-padding parent)))]
+	 [p-h (- (mi-element-h parent) (* 2 (mi-element-padding parent)))]
+	 [p-x (+ (mi-element-padding parent ) (mi-element-x parent))]
+	 [p-y (+ (mi-element-padding parent) (mi-element-y parent))]
 	 [new-w 0] [new-h 0])
      (let ([total-w    (fold (lambda (e acc) (+ acc (mi-element-w e)))    0 children)]
 	   [total-h    (fold (lambda (e acc) (+ acc (mi-element-h e)))    0 children)]
@@ -144,7 +145,10 @@
 			    (set! next-main-pos (+ main-pos main-size))]
 			   [space-between 
 			    (set! main-pos next-main-pos)
-			    (set! next-main-pos (+ main-pos main-size (/ free-space (- n-items 1))))]
+			    (set! next-main-pos (+ main-pos main-size 
+						   (if (> n-items 1)
+						       (/ free-space (- n-items 1))
+						       0)))]
 			   [space-around 
 			    (set! main-pos next-main-pos)
 			    (set! next-main-pos (+ main-pos main-size (/ free-space (+ n-items 1) )))]
@@ -160,6 +164,7 @@
 			    (mi-element-h-set! e cross-size)
 			    ;; FIXME: this is calculated differently with wrap.
 			    (set! new-w (+ new-w main-size))
+			    ;(printf "id ~d new-h ~d cross-size ~d~n" (mi-element-id e) new-h cross-size)
 			    (set! new-h (max new-h cross-size))]
 			   [else ; column
 			    (mi-element-x-set! e cross-pos)
@@ -185,120 +190,161 @@
 						      main-size )))])
 			   
 			 #;(printf "~d size ~d ~d ~d ~d ~d ~d~n" (mi-element-id e) main-pos main-size cross-pos cross-size new-w new-h)))
-		children))
-      (mi-element-content-size-set! parent (list new-w new-h)))))
+		children)
+      (mi-element-content-size-set! parent (list new-w new-h))))))
 
 (define (mi-element-add-child parent element)
   ;(printf "child add: ~d > ~d~n" (mi-element-id parent) (mi-element-id element))
   (mi-element-children-set! parent (cons element (mi-element-children parent))))
 
-(define (layout-block element x y w h w* h* margin padding parent p-id p-x p-y p-w p-h p-padding)
-  (define state  (hashtable-ref layout-state (mi-element-id parent) #f))
-  (match state
-    [(s-x s-y s-w s-h) 
-     (let-values 
-	 ([(new-state ret)
-	   (cond 
-	    #;[(equal? `(s-x s-y s-w s-h) '(0 0 0 0))
-	    (values (list (+ p-x margin p-padding)))]
-	    [(> (+ w* s-w s-x (* 2 p-padding)) p-w)
-	     ;; LINE BREAK
-	     (if (eq? w 'expand) (set! w* (- p-w (* 2 p-padding) (* 2 margin) )))
-	     (if (eq? h 'expand) (set! h* (- p-h (* 2 p-padding) (* 2 margin) )))
-	     (values
-	      (list (+ x p-x p-padding margin) 
-		    (+ y s-y s-h) 
-		    (+ w*  2 margin)
-		    (+ h* (* 2 margin)))
-	      (list (+ x p-x p-padding margin) 
-		    (+ y margin s-y s-h)
-		    w* 
-		    h*))]
-	    [else 
-	     ;; SAME LINE
-	     (if (eq? w 'expand) (set! w* (- p-w s-w (* 2 p-padding) (* 2 margin) )))
-	     (if (eq? h 'expand) (set! h* (- p-h (* 2 p-padding) (* 2 margin) )))
-	     (values
-	      (list (+ x s-x s-w margin) 
-		    (+ y s-y)
-		    (+ x w* margin)
-		    (max (+ h* margin)  s-h))
-	      (list (+ x s-x s-w margin)
-		    (+ y margin s-y)
-		    w* 
-		    h*))])])
-       (hashtable-set! layout-state p-id new-state)
-       (apply values ret))]
-    [else (values 0 0 0 0)]))
+(define (layout-block parent)
+  ;(printf "layout-block ~d ls ~d~n" (mi-element-id parent) (mi-state))
+  (let* ([children 
+	  (sort (lambda (a b) 
+		  (< (mi-element-order a) (mi-element-order b)))
+		(reverse  (mi-element-children parent)))]
+	[n-items (length children)]
+	[current-x 0] [current-y 0]
+	[p-padding (mi-element-padding parent)]
+	[p-w (case (mi-state) 
+		  [first (if (number? (mi-element-width parent))
+			     (mi-element-width parent)
+			     0)]
+		  [second (mi-element-w parent)])]
+	[p-h (case (mi-state) 
+		  [first (if (number? (mi-element-height parent))
+			     (mi-element-height parent)
+			     0)]
+		  [second (mi-element-h parent)]) ]
+	[p-x (+ p-padding (mi-element-x parent))]
+	[p-y (+ p-padding (mi-element-y parent))]
+	[new-w 0] [new-h 0]
+	[s-x p-x] [s-y p-y] [s-w 0] [s-h 0])
+   ;(printf "parent id ~d xywh ~d ~d ~d ~d ~d ~n" (mi-element-id parent) p-x p-y p-w p-h  p-padding)
+    (for-each 
+     (lambda (e)
+       (cond [(eq? (mi-element-el e) 'force-break)
+	     (set! s-x +inf.0)]
+	     [(eq? (mi-element-position e) 'absolute) 
+	      (layout-element e)]
+	     [else
+	      (layout-element e)
+	      (let*([position (mi-element-position e)]
+		 [x (case position [static 0] [relative (mi-element-left e)])]
+		 [y (case position [static 0] [relative (mi-element-top e)])]
+		 [h (mi-element-height e)]
+		 [w (mi-element-width e)]
+		 [w-max (let loop ([p parent][m 0])
+		      (if p (if (number? (mi-element-width p))
+				(- (mi-element-width p) m)
+				(loop (mi-element-parent p) (+ m (* 2 (mi-element-padding p)))))
+			  0))]
+		 [h-max (let loop ([p parent] [m 0]) 
+		      (if p (if (number? (mi-element-height p))
+				(- (mi-element-height p) m)
+				(loop (mi-element-parent p)  (+ m (* 2 (mi-element-padding p)))))
+			  0))]
+		 [margin (mi-element-margin e)]
+		 [padding (mi-element-padding e)]
+		 [parent (mi-element-parent e)]
+		 [csz (mi-element-content-size e)]
+		 [sz-w (+ (* 2 padding) (if (list? csz) (car csz) 0))]
+		 [sz-h (+ (* 2 padding) (if (list? csz) (cadr csz) 0))]
+		 [w* (case w 
+			    [expand 0]
+			    [auto sz-w]
+			    [else (max w sz-w)])]
+		 [h* (case h
+			    [expand 0]
+			    [auto  sz-h]
+			    [else (max h sz-h)])])
+	   ;(printf "block ~d ~d ~d ~d ~d ~d ~d ~d s: ~d ~d ~d ~d padding ~d max: ~d ~d~n" (mi-element-id e) x y w h w* h* csz s-x s-y s-w s-h padding w-max h-max)
+	     (cond 
+	      #;[(equal? `(s-x s-y s-w s-h) '(0 0 0 0))
+	      (values (list (+ p-x margin p-padding)))]
+	      [(> (+ w* s-w s-x (* 2 p-padding)) p-w)
+	       ;; LINE BREAK
+	       (if (eq? w 'expand) (set! w* (max w* w-max)))
+	       (if (eq? h 'expand) (set! h* (max h* h-max)))
+	       (mi-element-x-set! e (+ x p-x  margin))
+	       (mi-element-y-set! e (+ y margin s-y s-h))
+	       (set! s-x (+ x p-x margin))
+	       (set! s-y (+ y s-y s-h))
+	       (set! s-w (+ w*  2 margin))
+	       (set! s-h (+ h* (* 2 margin)))]
+	      [else 
+	       ;; SAME LINE
+	       (if (eq? w 'expand) (set! w* (- w-max s-w )))
+	       (if (eq? h 'expand) (set! h* (- h-max s-h (* 2 (mi-padding)))))
+	       
+	       (mi-element-x-set! e (+ x s-x s-w margin))
+	       (mi-element-y-set! e (+ y margin s-y))
+	       (set! s-x (+ x s-x s-w margin))
+	       (set! s-y (+ y s-y))
+	       (set! s-w (+ x w* margin))
+	       (set! s-h (max (+ h* margin) s-h))])
 
-(define (layout-element element)  
+	     (mi-element-w-set! e w*) 
+	     (mi-element-h-set! e h*)
+
+	     ;(printf "block ~d x ~d y ~d w ~d h ~d ~n" 
+		     (mi-element-id e) (mi-element-x e)
+		     (mi-element-y e) (mi-element-w e) (mi-element-h e))]
+	     ))
+     children)
+    (mi-element-content-size-set! parent (list s-w (+ s-h (- s-y p-y))))
+    (mi-element-w-set! parent (max s-w p-w))
+    (mi-element-h-set! parent (+ s-h (- s-y p-y)))
+    #;(printf "s-y p-y s-h ~d ~d ~d sz: ~d wh: ~d ~d~n" s-y p-y s-h 
+	    (mi-element-content-size parent) 
+	    (mi-element-w parent) (mi-element-h parent))
+    ))
+
+(define (absolute-position element)
   (check-arg mi-element? element layout-element)
-  (let* ([position (mi-element-position element)]
-	 [x (if (eq? position 'static) 0 (mi-element-x element))]
-	 [y (if (eq? position 'static) 0 (mi-element-y element))]
-	 [w (mi-element-w element)];(style-query (mi-element-style element) 'width 0)]
-	 [h (mi-element-h element)];(style-query (mi-element-style element) 'height 0)]
-	 [margin (mi-element-margin element)]
-	 [padding (mi-element-padding element)]
-	 [parent (mi-element-parent element)]
-	 [p-padding (mi-element-padding parent)]
-	 [csz (mi-element-content-size element)]
-	 [w* (case w 
-	       [expand 0]
-	       [auto (+ (* 2 padding) (if (list? csz) (car csz) 0))]
-	       [else w])]
-	 [h* (case h
-	       [expand 0]
-	       [auto  (+ (* 2 padding) (if (list? csz) (cadr csz) 0))]
-	       [else h])]
-	 )
-    (check-arg number? w* layout-element)
-    (check-arg number? h* layout-element)
-    (cond [(eq? position 'absolute)
- 	   (values x y w* h*)] ;; FIXME absolute should positioned relative to the nearest positioned ancestor (e.g. not static)
-	  [else 
-	   (let* ([p-id (mi-element-id parent)]
-		  [p-x (mi-element-x parent)]
-		  [p-y (mi-element-y parent)]
-		  [p-w (mi-element-w parent)]
-		  [p-h (mi-element-h parent)])
-	     (case (mi-element-display element)
-	       ['block 
-		(layout-block element x y w h w* h* margin padding 
-			      parent p-id p-x p-y p-w p-h p-padding)]
-	       #;
-	       ['flex
-		(layout-flex-add-item element)
-		#;
-		(layout-flex  element x y w h w* h* margin padding 
-		parent p-id p-x p-y p-w p-h p-padding)]))])))
+  (let* ( [x (mi-element-left element)]
+	  [y (mi-element-top element)]
+	  [w (mi-element-width element)];(style-query (mi-element-style element) 'width 0)]
+	  [h (mi-element-height element)];(style-query (mi-element-style element) 'height 0)]
+	  [padding (mi-element-padding element)]
+	  [csz (mi-element-content-size element)]
+	  [sz-w (+ (if (list? csz) (car csz) 0)  (* 2 padding))]
+	  [sz-h (+ (if (list? csz) (cadr csz) 0) (* 2 padding))]
+	  [w* (case w 
+		[auto sz-w]
+		[else (max sz-w w)])]
+	  [h* (case h
+		[auto sz-h]
+		[else (max sz-h h)])])
+	  (check-arg number? w* layout-element)
+	  (check-arg number? h* layout-element) 
+	  ;; FIXME absolute should positioned relative to the nearest positioned ancestor (e.g. not static)
+    (mi-element-x-set! element x)
+    (mi-element-y-set! element y)
+    (mi-element-w-set! element w*)
+    (mi-element-h-set! element h*)
+    (mi-element-layout-state-set! element #t)))
 
 (define (mi-force-break id)
   (check-arg symbol? id mi-force-break)
-  (let ([coord (hashtable-ref layout-state id #f)])
-    (if coord
-	(hashtable-set! layout-state id (match coord [(x y w h) (list 99999999 0 0 (+ h y))])))))
-  
-(define (start-layout element)
-  (check-arg mi-element? element start-layout)
+  (mi-element-add-child (mi-el-by-id id) (make-mi-element 'force-break  #f #f id)))
+
+;; (case (mi-element-display element)
+;;     [(flex block)
+;;      (mi-element-children-set! element '())]
+;;     [else
+;;      (printf "start-layout: unsupported display: ~d~n" (mi-element-display element))]))
+
+(define (layout-element element)
+  (check-arg mi-element? element layout-element)
+  ;(printf "layout element ~d~n" (mi-element-id element))
+  (case (mi-element-position element)
+    [absolute
+     (absolute-position element)])
   (case (mi-element-display element)
     [block
-     (hashtable-set! layout-state (mi-element-id element) 
-		     (list (+ (mi-element-padding element) (mi-element-x element)) 
-			   (+ (mi-element-padding element) (mi-element-y element)) 0 0))]
+     (layout-block element)]
     [flex
-     (mi-element-children-set! element '())]
-    [else
-     (printf "start-layout: wrong display: ~d~n" (mi-element-display element))]))
-
-(define (end-layout element)
-  (check-arg mi-element? element end-layout)
-
-  (case (mi-element-display element)
-    [block
-     (hashtable-set! layout-state (mi-element-id element) #f)]
-    [flex
-     #t
      (layout-flex element)]
-    [else
-     (printf "start-layout: wrong display: ~d~n" (mi-element-display element))]))
+    [else #f]))
+    

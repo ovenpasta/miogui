@@ -32,9 +32,10 @@
    alist)
   hash)
 
-(define (compare-specifity x y)
+(define (compare-specificity x y)
   ;(printf "~d ~d~n" x y)
     (cond
+     [(equal? x y) #f]
      [(< (list-ref x 0) (list-ref y 0)) #t]
      [(> (list-ref x 0) (list-ref y 0)) #f]
      [(< (list-ref x 1) (list-ref y 1)) #t]
@@ -43,31 +44,8 @@
      [(> (list-ref x 2) (list-ref y 2)) #f]
      [(< (list-ref x 3) (list-ref y 3)) #t]
      [else #f]))
-(define (preprocess-attrs element aa)
-  (define parent (mi-element-parent element))
-  (let loop ([l aa] [res '()])
-    (if (null? l) res
-	(let* ([x (car l)]
-	       [attr (car x)] [val (cdr x)])
-	  ;(printf "attr: ~d val: ~d ~n" attr val)
-	  (loop (cdr l)
-		(append ;(case attr
-			#;[(border) `((border-top ,@val) 
-				    (border-left ,@val) 
-				    (border-bottom ,@val) 
-				    (border-right ,@val))]
-		 (match val 
-			[(v '% . y) (cond [(eq? attr 'width)
-					   (list 
-					    (append 
-					     (list attr (* (/ v 100.)
-							   (mi-element-h parent)) ) y))]
-					   [(eq? attr 'height)
-					    (list (append
-						   (list attr (* (/ v 100.)
-								 (mi-element-h parent))) y))])]
-			[else (list x)])
-		      res))))))
+
+(include "css-preprocess.ss")
 
 ;(define (preprocess-attrs aa) aa)
 
@@ -89,18 +67,18 @@
 	      (let ([selectors (reverse (cdr (memq '==> (reverse e))))]
 		    [attribs (preprocess-attrs element (cdr (memq '==> e)))])
 		(define null-spec '(0 0 0 0 0))
-		(define (process-selector selector type id* class* element* pseudo* specifity)
-		 ; (printf "selector: ~d id: ~d pseudo: ~d~n" selector id* pseudo*)
+		(define (process-selector selector type id* class* element* pseudo* specificity)
+		 ;(printf "selector: ~d id: ~d pseudo: ~d~n" selector id* pseudo*)
 		  (match selector
-		    ['%%style (match specifity [(a b c d e) (list 1 b c d e)])]
+		    ['%%style (match specificity [(a b c d e) (list 1 b c d e)])]
 		    [('id (? (cut eq? <> id*) x)) 
-		     (match specifity [(a b c d e) (list a (+ 1 b) c d e)])]
+		     (match specificity [(a b c d e) (list a (+ 1 b) c d e)])]
 		    [('class (? (cut eq? <> class*) x)) 
-		     (match specifity [(a b c d e) (list a b (+ 1 c) d e)])] 
-		    [(': (? (cut eq? <> pseudo*) x)) (match specifity [(a b c d e) (list a b (+ 1 c) d e)])]
+		     (match specificity [(a b c d e) (list a b (+ 1 c) d e)])] 
+		    [(': (? (cut memq <> pseudo*) x)) (match specificity [(a b c d e) (list a b (+ 1 c) d e)])]
 		    [('and sel ...) 
 		     (let ([l (map (cut process-selector <> 'and 
-					id* class* element* pseudo* specifity) sel)])
+					id* class* element* pseudo* specificity) sel)])
 					;(printf "L: ~d\n" l)
 		       (if (let loop ([l l])
 			     (if (null? l) #t
@@ -110,7 +88,7 @@
 			   null-spec))]
 		    [('or sel ...) 
 		     (apply map + (map (cut process-selector <> 'or 
-					    id* class* element* pseudo* specifity) sel))]
+					    id* class* element* pseudo* specificity) sel))]
 		    [('> e f) 
 		     (let ([a (process-selector e '>e 
 						(mi-element-id parent) 
@@ -121,20 +99,20 @@
 			   [b (process-selector f '>f id class el pseudo null-spec)])
 		       (if (not (or (equal? a null-spec) (equal? b null-spec)))
 			   (map + a b)
-			   specifity))]
+			   specificity))]
 					;[('+ e f) (for-each (cut process-selector <> '+) sel)]
 		    ['* '(0 0 0 0 1)]
 		    [(? (cut eq? <> element*) e) 
-		     (match specifity [(a b c d e) (list a b c (+ d 1) e)])]
+		     (match specificity [(a b c d e) (list a b c (+ d 1) e)])]
 		    [else 
 		     ;;(printf "~d does not match~n" (car selectors)) 
-		     specifity]))
+		     specificity]))
 		(let ([sp (process-selector (car selectors) 'type id class el pseudo '(0 0 0 0 0))])
-					;(printf "Specifity: ~d~n" sp)
+					;(printf "Specificity: ~d~n" sp)
 		  (unless (equal? sp null-spec)
 		    (set! matches (cons (cons sp attribs) matches))))))
 	    (loop (cdr entries) '())))
-					;(pretty-print matches)
+  ;(pretty-print matches)
   (for-each
    (lambda (x)
      (for-each (lambda (pair)
@@ -148,8 +126,8 @@
 		       (hashtable-set! hash (car pair) val))))
 	       (cdr x)))
    (sort (lambda (x y) 
-	   (compare-specifity (car x) (car y))) 
-	 matches))
+	   (compare-specificity (car x) (car y))) 
+	 (reverse matches)))
   
   (alist->hashtable 
    (map 

@@ -19,16 +19,27 @@
 	  (mutable children)
 	  (mutable style) 
 	  (mutable pseudo)
-	  (mutable layout-state) 
+	  (mutable mi-state) 
 	  (mutable x) (mutable y) (mutable w) (mutable h) 
-	  (mutable content-size)))
+	  (mutable content-size)
+	  (mutable layout-state)))
+
+(define (mi-element->string e)
+  (format "id: ~d el: ~d\nxywh: ~d ~d ~d ~d\ncontent-size: ~d\npseudo: ~d\nstyle: ~d\n" 
+	  (mi-element-id e) (mi-element-el e)
+	  (mi-element-x e) (mi-element-y e)
+	  (mi-element-w e) (mi-element-h e)
+	  (mi-element-content-size e)
+	  (mi-element-pseudo e)
+	  (fold (lambda (x acc) (string-append acc (format "~d" x) "\n")) ""
+			(hashtable->alist (mi-element-style e)))))
   
 (define element-table (make-eq-hashtable))
 
-(define style-table (make-eq-hashtable))
-(define content-size-table (make-eq-hashtable))
+(define old-element-table (make-eq-hashtable))
 
-(define (make-mi-element el id class pseudo parent)
+
+(define (make-mi-element el id class parent)
   ;(printf "make-mi-element ~d ~d ~d~n" el id class )
   (apply make-mi-element% 
 	 (map 
@@ -37,8 +48,9 @@
 	      [el el]
 	      [id id]
 	      [class class]
-	      [pseudo pseudo]
+	      [pseudo '()]
 	      [parent parent]
+	      [mi-state #f]
 	      [children '()]
 	      [style (make-eq-hashtable)]
 	      [(x y w h) 0]
@@ -69,109 +81,103 @@
       [initial default]
       [else v])))
 
+(define (mi-element-pseudo-append! element pseudo)
+  (mi-element-pseudo-set! element (append (mi-element-pseudo element)
+					  pseudo)))
+
+(define (check-activable element old-element activable)
+  (define id (mi-element-id element))
+  (when old-element
+	(when activable
+	      (when (not (mi-kbd-item))
+		    (mi-kbd-item id)
+	      (printf "KBD ITEM: ~d~n" id))
+	      (when (eq? (mi-kbd-item) id)
+		    (mi-element-pseudo-append! element '(focus))
+		    (when (mi-key)
+			  (case (mi-key)
+			    [tab
+			     (if (memq 'shift (mi-keymod))
+				 (mi-kbd-item (mi-last-activable))
+				 (mi-kbd-item #f))
+			     (mi-key #f)]
+			    [return
+			     (mi-hot-item id) (mi-active-item id)
+			     (mi-key #f)
+			     ])))
+	      (mi-last-activable id))
+	
+	(when (region-hit? (mi-element-x old-element) (mi-element-y old-element)
+		     (mi-element-w old-element) (mi-element-h old-element))
+	      (mi-hot-item id)
+	      (when (and activable (not (mi-active-item)) (mi-mouse-down?))
+		    (mi-active-item id)
+		    (mi-kbd-item id))
+	      (mi-element-pseudo-append!
+		element
+			(if (eq? (mi-active-item) id)
+			    '(pressed)
+			    '(hover))))))
+
 (define (create-element el id activable thunk)
-  (unless id
-    (set! id (mi-id id)))
-  (let-values ([(last-x last-y last-w last-h) (get-last-coords id)])
-    (let ([old-style (widget-old-style id)]
-	  [element #f] 
-	  [td #f] 
-	  [style #f] 
-	  [pseudo #f])
-      (when activable
-	(when (not (mi-kbd-item))
-	  (mi-kbd-item id)
-	  (printf "KBD ITEM: ~d~n" id))
-	(when (eq? (mi-kbd-item) id)
-	  (when (mi-key)
-	    (case (mi-key)
-	      #;['(shift tab) 
-	       (mi-kbd-item (mi-last-activable))
-	       (mi-keys-pop) (mi-keys-pop)]
-	      [tab
-	       (mi-kbd-item #f)(printf "TAB~n")
-	       (mi-key #f)]
-	      [return
-	       (mi-hot-item id) (mi-active-item id)
-	       (mi-key #f)
-	       ])))
-	  (mi-last-activable id))
+  (define element (mi-el-by-id id))
+  (define parent (mi-el))
+  (define old-element (hashtable-ref old-element-table id #f))
+  (p10e ([mi-el element])
+	;; (printf "id ~d old-element: ~d~n " id old-element)
+	(when 
+	 ;; if we just created the element and we are after the first pass then
+	 ;; we'll need to wait until the next frame to create it
+	 (or (eq? (mi-state) 'first) element)
 
-      (when (and (number? last-w) (number? last-h) (region-hit? last-x last-y last-w last-h))
-	(mi-hot-item id)
-	(when (and activable (not (mi-active-item)) (mi-mouse-down?))
-	  (mi-active-item id)
-	  (mi-kbd-item id))
-	(if (eq? (mi-active-item) id)
-	    (set! pseudo 'pressed)
-	    (set! pseudo 'hover)))
-      
-      (set! element (make-mi-element el id (mi-class) pseudo (mi-el)))
-      (guard (e [else (printf "ops in stylesheet resolve: ") (display-condition e)
-		      (newline) (raise e)])
-	(set! style (stylesheet-resolve element)))
-      (hashtable-set! style-table id style)
-      (mi-element-style-set! element style)
-      
-      (set! td (mi-style-query element 'transition-duration 0 #f))
+	 (if element
+	     (unless id
+		     (set! id (mi-id id))))
+	 (case (mi-state)
+	   [ready 
+	    (mi-draw-border)
+	    (mi-draw-outline)
+	    ]
+	   [first
+	    (set! element (make-mi-element el id (mi-class) parent))
+	    (mi-el element)
+	    (check-activable element old-element activable)
+	    
+	    (let ([style (guard (e [else (printf "ops in stylesheet resolve: ") 
+					 (display-condition e)
+					 (newline) (raise e)])
+				(stylesheet-resolve element))]
+		  [td 0])
+	      (when old-element 
+		    (let ([old-style (mi-element-style old-element) ] )
+		      (set! td (mi-style-query element 'transition-duration 0 #f))
+		      
+		      (when (and (> td 0) (not (compare-hashes style old-style)))
+			    (let ([tr (hashtable-ref transitions id #f)])
+			      (if tr ;; already in transition
+				  (start-transition element (style-transition 
+							     (list-ref tr 1) (list-ref tr 2)
+							     (get-transition-ratio tr td)) style)
+				  (start-transition element old-style style)))))
+	      
+		    (let ([tr (hashtable-ref transitions id #f)])
+		      (when tr
+			    (set! style (style-transition (list-ref tr 1) (list-ref tr 2) 
+							  (get-transition-ratio tr td)))))
+		    (eventually-end-transition element td))
+		    
+	      (mi-element-style-set! element style)) ;;STYLE STUFF
+	    
+	    (hashtable-set! element-table id element)
 
-      (when (not (compare-hashes style old-style))
-	(let ([tr (hashtable-ref transitions id #f)])
-	  (if tr ;; already in transition
-	      (start-transition element (style-transition (list-ref tr 1) (list-ref tr 2)
-							  (get-transition-ratio tr td)) style)
-	      (start-transition element old-style style))))
+	    (cond [(eq? (mi-element-position element) 'absolute)
+		   (absolute-position element)])
+	    (cond [(mi-element-parent element) 
+		   (mi-element-add-child (mi-element-parent element) element)])])
 
-      (let ([tr (hashtable-ref transitions id #f)])
-	(when tr
-	  (set! style (style-transition (list-ref tr 1) (list-ref tr 2) 
-					(get-transition-ratio tr td)))))
-      (eventually-end-transition element td)
-
-      (mi-element-content-size-set! element (hashtable-ref content-size-table id #f))
-      (mi-element-style-set! element style)
-
-      (mi-element-x-set! element (mi-element-left element))
-      (mi-element-y-set! element (mi-element-top element))
-      (mi-element-w-set! element (mi-element-width element))
-      (mi-element-h-set! element (mi-element-height element))
-    
-      (case  (mi-element-display element)
-	[block
-	 (let-values ([(x y w h) (layout-element element)])
-	   (mi-element-x-set! element x)
-	   (mi-element-y-set! element y)
-	   (mi-element-w-set! element w)
-	   (mi-element-h-set! element h))]
-	[flex
-	 #t
-	 ]
-	[else (printf "create-element: error wrong value for display: ~d~n" display)])
-
-      (cond [(and (mi-element-parent element) 
-		  (eq? (mi-element-display (mi-element-parent element)) 
-		       'flex))
-	     (mi-element-x-set! element last-x)
-	     (mi-element-y-set! element last-y)
-	     (mi-element-w-set! element last-w)
-	     (mi-element-h-set! element last-h)
-	     (mi-element-add-child (mi-element-parent element) element)])
-
-					;(define border (style-query style 'border 'none))
-					;
-      ;; (define-values (border-type border-width border-color)
-      ;;   (match border 
-      ;; 	   ['none (values 'none 0 #f)] 
-      ;; 	   [(solid ,width ,color) (values 'solid width color)] ))
-
-
-      (p10e ([mi-el element])
-	(let* ([r (thunk)]
-	       [sz (mi-element-content-size element)])
-	  (hashtable-set! layout-state id #f)
-	  (hashtable-set! content-size-table id sz)
-	  (hashtable-set! element-table id element)
-	  r)))))
+	 (p10e ([mi-style '()])
+	       (let* ([r (thunk)])
+		 r)))))
 
 
 (define (mi-x) (mi-element-x (mi-el)))
@@ -185,9 +191,50 @@
 (define (mi-color) (mi-element-color (mi-el)))
 (define (mi-bg-color) (mi-element-background-color (mi-el)))
 (define (mi-border-radius) (mi-element-border-radius (mi-el)))
-(define (mi-border-color) (mi-element-border-color (mi-el)))
-(define (mi-border-width) (mi-element-border-width (mi-el)))
-(define (mi-border-style) (mi-element-border-style (mi-el)))
+(define (mi-border) (mi-element-border (mi-el)))
+(define (mi-border-left)
+  (list-ref (mi-border) 3))
+(define (mi-border-top)
+  (list-ref (mi-border) 0))
+(define (mi-border-right)
+  (list-ref (mi-border) 1))
+(define (mi-border-bottom)
+  (list-ref (mi-border) 2))
+
+(define (mi-border-left-width)
+  (car (mi-border-left)))
+(define (mi-border-left-style)
+  (cadr (mi-border-left)))
+(define (mi-border-left-color)
+  (caddr (mi-border-left)))
+
+(define (mi-border-right-width)
+  (car (mi-border-right)))
+(define (mi-border-right-style)
+  (cadr (mi-border-right)))
+(define (mi-border-right-color)
+  (caddr (mi-border-right)))
+
+(define (mi-border-top-width)
+  (car (mi-border-top)))
+
+(define (mi-border-top-style)
+  (cadr (mi-border-top)))
+(define (mi-border-top-color)
+  (caddr (mi-border-top)))
+
+(define (mi-border-bottom-width)
+  (car (mi-border-bottom)))
+(define (mi-border-bottom-style)
+  (cadr (mi-border-bottom)))
+(define (mi-border-bottom-color)
+  (caddr (mi-border-bottom)))
+
+
+
+(define (mi-outline-color) (mi-element-outline-color (mi-el)))
+(define (mi-outline-width) (mi-element-outline-width (mi-el)))
+(define (mi-outline-style) (mi-element-outline-style (mi-el)))
 (define (mi-z-index) (mi-element-z-index (mi-el)))
 (define (mi-line-height) (mi-element-line-height (mi-el)))
 (define (mi-text-align) (mi-element-text-align (mi-el)))
@@ -197,14 +244,17 @@
 (define mi-style (make-parameter '()))
 (define (mi-display) (mi-element-display (mi-el)))
 
-(define (mi-el-by-id id) (hashtable-ref element-table id #f))
+(define (mi-el-by-id id) 
+  (let ([e (hashtable-ref element-table id #f)])
+    ;(printf "Mi-el-by-id: ~d ~d~n" id (if e #t #f))
+    e))
 (define mi-id
   (case-lambda 
     [() (mi-element-id (mi-el))]
     [(sub-id)
      (let ([x (if sub-id 
 		  (symbol->string sub-id)
-		  (format "~d" (length (mi-element-children (mi-el)) )))]) 
+		  (format "~d" (if (mi-el) (length (mi-element-children (mi-el)) ) 0)))]) 
        (string->symbol (string-append (symbol->string (mi-id)) "-" x)))]))
 
 
@@ -213,150 +263,3 @@
 
 (define (mi-wget id name default)
   (getprop id name default))
-
-
-(define-syntax define-css-element
-  (lambda (x)
-    (syntax-case x()
-      [(_ name default inherited transformer validator ...)
-	(with-syntax 
-	 ([function-name 
-	   (datum->syntax #'name 
-			  (string->symbol 
-			   (string-append 
-			     "mi-element-"
-			    (symbol->string 
-			     (syntax->datum #'name)))))] )
-	 #`(begin 
-	     (define (function-name element)
-	       (let ([v (mi-style-query element 'name default inherited)])
-		 (if (or (validator v) ...)
-		     (transformer element v)
-		     (errorf 'function-name "invalid attribute value ~d for element ~d" v (mi-element-id element)))))))])))
-
-(define (i-t element x) x)
-
-(define (in-list-validator . values)
-  (lambda (v)
-    (memq v values)))
-
-(define-css-element position 'static #f i-t
-  (in-list-validator 'static 'relative 'absolute))
-(define-css-element padding 0 #f i-t number?)
-(define-css-element margin 0 #f i-t number?)
-
-(define (color-validator v)
-  (or (color? v) (symbol? v) (and (list? v) (<= 4 (length v) 5)))) ;;TODO IMPROVE THIS
-(define (color-transformer e v)
-  (->color v))
-(define-css-element border-color 'black #f color-transformer color-validator)
-
-(define-css-element border-style 'none #f i-t
-  ;;not yet supported: 'dotted 'dashed 'double 'groove 'ridge 'inset 'outset
-  (in-list-validator 'none 'hidden 'solid)) 
-
-(define (border-width-transformer element width)
-  (if (number? width) 
-      width
-      (case width
-	[thin 0.5]
-	[medium 1]
-	[thick 2])))
-
-(define-css-element border-width 'medium #f
-  border-width-transformer
-  number? 
-  (in-list-validator 'medium 'thin 'thick))
-
-(define-css-element border-radius 0 #f i-t number?)
-
-(define-css-element color 'black #t color-transformer color-validator)
-
-(define-css-element background-color 'transparent #f color-transformer color-validator)
-
-(define-css-element font-family "sans" #t i-t string?)
-
-(define (font-size-transformer element sz)
-  (if (number? sz) sz
-      (case sz
-	[medium 12]
-	[large 14]
-	[small 10]
-	[smaller (- (mi-element-font-size (mi-element-parent element)) 2)]
-	[larger  (+ (mi-element-font-size (mi-element-parent element)) 2)]
-	[x-small 8]
-	[x-large 16]
-	[xx-small 7]
-	[xx-large 18])))
-
-(define-css-element font-size 'medium #t
-  font-size-transformer 
-  number? 
-  (in-list-validator 'medium 'large 'small 'smaller 'larger 'x-small 'x-large 'xx-small 'xx-large))
-
-;;;normal|bold ; these are not supported: bolder|lighter|number
-(define-css-element font-weight 'normal #t i-t
-  (in-list-validator 'normal 'bold))
-
-(define-css-element font-style 'normal #t i-t
-  (in-list-validator 'normal 'italic 'oblique))
-
-(define (line-height-transformer e v)
-  (if (number? v) v
-      1.2))
-
-(define (eq-validator s)
-  (lambda (x)
-    (eq? s x)))
-
-(define-css-element line-height 'normal #t
-  line-height-transformer
-  number?
-  (eq-validator 'normal))
-
-(define-css-element display 'block #f i-t
-  (in-list-validator 'block 'flex)) ;; TODO: ADD SUPPORT FOR 'none
-
-(define-css-element justify-content 'flex-start #f i-t
-  ;; WARNING: STRETCH IS A MIOGUI EXTENSION
-  (in-list-validator 'flex-start 'flex-end 'space-around 'space-between 'center 'stretch))
-
-(define-css-element align-items 'stretch #f i-t
-  (in-list-validator 'flex-start 'flex-end 'center 'stretch))
-
-(define-css-element align-self 'auto #f i-t
-  (in-list-validator 'auto 'flex-start 'flex-end 'center 'stretch))
-
-(define-css-element flex-direction 'row #f i-t
-  (in-list-validator 'row 'column 'row-reverse 'column-reverse))
-
-(define-css-element flex 1 #f i-t number?)
-
-(define-css-element min-width 0 #f i-t number? list?)
-
-(define-css-element min-height 0 #f i-t number? list?)
-
-(define-css-element text-align 'left #f i-t number? (in-list-validator 'left 'center 'right))
-
-(define-css-element box-sizing 'border-box #f i-t
-  (eq-transformer 'border-box))
-
-(define-css-element order 0 #f i-t
-  number?)
-
-(define (z-index-transformer element v)
-  (if (number? v) v
-      (let ([parent (mi-element-parent element)])
-	(if parent (mi-element-z-index parent) 0))))
-
-(define-css-element z-index 'auto #f 
-  z-index-transformer
-  number?
-  (eq-validator 'auto))
-
-(define-css-element left 0 #f i-t number?)
-(define-css-element top 0 #f i-t number?)
-(define-css-element width 'auto #f i-t
-  number? list? (in-list-validator 'auto 'expand))
-(define-css-element height 'auto #f i-t
-  number? list? (in-list-validator 'auto 'expand))

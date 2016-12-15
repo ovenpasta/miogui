@@ -1,6 +1,7 @@
 
 (define color-list
-  '((aliceblue 	240 248 255)
+  '((transparent 0 0 0 0)
+    (aliceblue 	240 248 255)
     (antiquewhite 	250 235 215)
     (aqua 	0 255 255)
     (aquamarine 	127 255 212)
@@ -152,7 +153,7 @@
   (check-arg symbol? x name->color)
   (cond [(hashtable-ref color-table x #f) 
 	 => (lambda (y) (apply make-color (map (lambda (x) (exact->inexact (/ x 255))) y) ))]
-	[else #f]))
+	[else (errorf 'name->color "unknown color ~d" x)]))
 
 (define (->color x)
   (cond
@@ -161,5 +162,5 @@
     [(list? x) (case (car x) 
 		 [(rgb rgba) (apply make-color (map (cut / <> 255) (cdr x)))]
 		 [(rgbf rgbaf)  (apply make-color (cdr x))]
-		 [else #f])]
+		 [else (errorf '->color "unknown color ~d" x)])]
     [else (errorf '->color "unknown color ~d" x)]))
